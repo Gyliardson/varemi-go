@@ -170,7 +170,8 @@ class SqliteCartRepository:
                     UPDATE cart_items
                     SET quantity = quantity + 1,
                         product_id = ?, product_name = ?, unit_price_cents = ?, currency = ?,
-                        promotion_label = ?, price_source = ?, price_effective_at = ?, updated_at = ?
+                        promotion_label = ?, price_source = ?, price_effective_at = ?,
+                        updated_at = ?
                     WHERE session_id = ? AND barcode = ?
                     """,
                     (
