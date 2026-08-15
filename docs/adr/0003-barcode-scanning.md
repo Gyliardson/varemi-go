@@ -17,8 +17,9 @@ Usar `@zxing/browser` para a primeira implementação de câmera, configurado pa
 
 - EAN-13;
 - EAN-8;
-- UPC-A;
-- UPC-E.
+- UPC-A.
+
+UPC-E não é habilitado nesta slice. O callback atual transporta somente o texto lido; um UPC-E de oito dígitos ficaria indistinguível de EAN-8 no backend. Suporte futuro exige preservar a symbology e canonicalizar UPC-E para a identidade GTIN-12 correspondente antes de fazer claim de suporte.
 
 O backend aceita GTIN-8/12/13/14 válidos e o provider decide se existe produto para aquele código. Entrada manual permanece sempre visível.
 
@@ -28,7 +29,7 @@ Leituras idênticas muito próximas são suprimidas no cliente para UX; integrid
 
 A UI distingue/faz fallback para permissão negada, câmera ausente e erro/compatibilidade genérica. Barcode inválido/desconhecido e rede são tratados na camada API/UI.
 
-Testes automatizados de callback/fallback não serão descritos como teste de câmera física.
+CI cobre helpers puros do scanner e o fluxo E2E por entrada manual. A integração ZXing/câmera não é simulada como se fosse cobertura real, e testes automatizados não serão descritos como validação de câmera física.
 
 ## Referências primárias
 

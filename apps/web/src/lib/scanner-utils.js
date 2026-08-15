@@ -23,3 +23,6 @@ export function createDuplicateGuard(windowMs = 1200) {
     return duplicate;
   };
 }
+
+/** @type {("EAN_13" | "EAN_8" | "UPC_A")[]} */
+export const SUPPORTED_BARCODE_FORMATS = ["EAN_13", "EAN_8", "UPC_A"];

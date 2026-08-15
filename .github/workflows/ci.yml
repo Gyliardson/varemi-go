@@ -23,7 +23,11 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
-      - run: python -m pip install -e '.[dev]'
+          cache-dependency-path: requirements.lock
+      - run: python -m pip install -r requirements.lock
+      - run: python -m pip install --no-deps --no-build-isolation .
+      - run: python -m pip check
+      - run: pytest --no-cov tests/test_api.py tests/test_persistence.py tests/test_barcodes.py
       - run: ruff format --check .
       - run: ruff check .
       - run: mypy
@@ -39,7 +43,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
-      - run: npm install
+      - run: npm ci
       - run: npm run web:format:check
       - run: npm run web:lint
       - run: npm run web:typecheck

@@ -13,7 +13,7 @@ A primeira vertical slice implementa:
 - URL de loja demo pronta para ser codificada em QR: `/#/store/demo-market`;
 - sessão anônima/pseudônima, sem cadastro;
 - credencial de sessão em cookie `HttpOnly` separado do `session_id`;
-- scanner web para EAN-13, EAN-8, UPC-A e UPC-E com entrada manual sempre disponível;
+- scanner web para EAN-13, EAN-8 e UPC-A com entrada manual sempre disponível;
 - tratamento de permissão negada, câmera ausente/incompatível, barcode inválido/desconhecido e falha de rede;
 - supressão de leituras repetidas no scanner e idempotência server-side para retry de adição;
 - provider demo determinístico atrás de contrato interno de catálogo/preço;
@@ -23,9 +23,11 @@ A primeira vertical slice implementa:
 - testes de domínio, persistência, API, web e E2E mobile/full-stack configurado em Playwright.
 
 
-O teste automatizado do scanner cobre lógica/fallbacks, **não valida câmera física real**.
+Os testes unitários do scanner cobrem apenas helpers puros; o E2E crítico usa entrada manual. A integração ZXing/câmera e **câmera física real não são validadas por CI**. UPC-E fica fora desta slice porque o payload textual de oito dígitos não preserva a symbology necessária para distingui-lo de EAN-8.
 
-Fora do escopo: handoff para PDV, pagamento, emissão fiscal, self-checkout, antifraude avançado, visão computacional, IA, analytics sofisticado e aplicativo nativo.
+Ainda pertencem ao MVP, mas **não estão implementados nesta vertical slice**: finalização explícita, handoff seguro por QR/identificador e recuperação autoritativa do carrinho na estação de checkout.
+
+Fora do MVP inicial: processamento próprio de pagamento, emissão fiscal própria, visão computacional, IA, analytics avançado e automação sofisticada de prevenção de perdas. A sequência é: vertical slice demo → pilot readiness (integração real + baseline + instrumentação/observabilidade mínima + fallback) → piloto → evidência → expansão/refinamentos.
 
 ## Arquitetura e desenvolvimento
 

@@ -1,8 +1,11 @@
-import { createDuplicateGuard } from "./lib/scanner-utils.js";
+import {
+  createDuplicateGuard,
+  SUPPORTED_BARCODE_FORMATS,
+} from "./lib/scanner-utils.js";
 
 /**
- * Starts a browser camera scanner. This integration is exercised with mocked browser boundaries in CI;
- * it is not evidence that physical device cameras were validated.
+ * Starts a browser camera scanner. CI covers pure scanner helpers and manual full-stack flow;
+ * it does not validate ZXing camera integration or physical device cameras.
  * @param {HTMLVideoElement} video
  * @param {(barcode: string) => void} onBarcode
  */
@@ -14,12 +17,10 @@ export async function startBarcodeScanner(video, onBarcode) {
   const [{ BrowserMultiFormatOneDReader }, { BarcodeFormat, DecodeHintType }] =
     await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
   const hints = new Map();
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-    BarcodeFormat.EAN_13,
-    BarcodeFormat.EAN_8,
-    BarcodeFormat.UPC_A,
-    BarcodeFormat.UPC_E,
-  ]);
+  hints.set(
+    DecodeHintType.POSSIBLE_FORMATS,
+    SUPPORTED_BARCODE_FORMATS.map((format) => BarcodeFormat[format]),
+  );
   const reader = new BrowserMultiFormatOneDReader(hints, {
     delayBetweenScanAttempts: 80,
   });

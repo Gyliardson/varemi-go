@@ -6,8 +6,9 @@ import os
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Response, status
-from fastapi.responses import FileResponse
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,12 +26,16 @@ from varemi_go.persistence import (
 
 
 class ApiModel(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
 class ErrorBody(ApiModel):
     code: str
     message: str
+
+
+class ApiHttpError(HTTPException):
+    pass
 
 
 class StoreResponse(ApiModel):
@@ -106,6 +111,17 @@ def create_app(
     )
     app.state.context = context
 
+    @app.exception_handler(ApiHttpError)
+    def api_http_error_handler(_request: Request, error: ApiHttpError) -> JSONResponse:
+        return JSONResponse(status_code=error.status_code, content=error.detail)
+
+    @app.exception_handler(RequestValidationError)
+    def validation_error_handler(_request: Request, _error: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"code": "VALIDATION_ERROR", "message": "Request validation failed"},
+        )
+
     @app.get("/api/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status="ok")
@@ -179,10 +195,19 @@ def create_app(
         except InvalidBarcodeError as error:
             raise _http_error(422, "INVALID_BARCODE", str(error)) from error
 
+        request_hash = _request_fingerprint({"barcode": barcode})
         try:
+            replay = context.repository.get_idempotent_add_result(
+                session_id,
+                token,
+                idempotency_key=idempotency_key,
+                request_hash=request_hash,
+            )
+            if replay is not None:
+                return _cart_response(replay)
+
             cart = context.repository.get_authorized_cart(session_id, token)
             quote = context.provider.get_quote(cart.store, barcode)
-            request_hash = _request_fingerprint({"barcode": barcode})
             updated_cart = context.repository.add_item(
                 session_id,
                 token,
@@ -234,7 +259,12 @@ def create_app(
     @app.delete(
         "/api/sessions/{session_id}/items/{barcode}",
         response_model=CartResponse,
-        responses={401: {"model": ErrorBody}, 404: {"model": ErrorBody}, 410: {"model": ErrorBody}},
+        responses={
+            401: {"model": ErrorBody},
+            404: {"model": ErrorBody},
+            410: {"model": ErrorBody},
+            422: {"model": ErrorBody},
+        },
     )
     def remove_item(
         session_id: str,
@@ -286,7 +316,7 @@ def _authorized_cart(context: RequestContext, session_id: str, token: str) -> Ca
     return _cart_response(cart)
 
 
-def _session_http_error(error: Exception) -> HTTPException:
+def _session_http_error(error: Exception) -> ApiHttpError:
     if isinstance(error, CartExpiredError):
         return _http_error(410, "CART_EXPIRED", "Cart session has expired")
     if isinstance(error, SessionNotFoundError):
@@ -325,5 +355,5 @@ def _request_fingerprint(payload: dict[str, Any]) -> str:
     return hashlib.sha256(serialized).hexdigest()
 
 
-def _http_error(status_code: int, code: str, message: str) -> HTTPException:
-    return HTTPException(status_code=status_code, detail={"code": code, "message": message})
+def _http_error(status_code: int, code: str, message: str) -> ApiHttpError:
+    return ApiHttpError(status_code=status_code, detail={"code": code, "message": message})

@@ -108,6 +108,34 @@ class SqliteCartRepository:
             raise CartExpiredError(session_id)
         return cart
 
+    def get_idempotent_add_result(
+        self,
+        session_id: str,
+        token: str,
+        *,
+        idempotency_key: str,
+        request_hash: str,
+        now: datetime | None = None,
+    ) -> Cart | None:
+        current_time = now or utc_now()
+        with self._transaction() as connection:
+            self._authorize(connection, session_id, token)
+            self._require_active(connection, session_id, current_time)
+            existing_request = connection.execute(
+                """
+                SELECT operation, request_hash FROM idempotency_requests
+                WHERE session_id = ? AND idempotency_key = ?
+                """,
+                (session_id, idempotency_key),
+            ).fetchone()
+            if existing_request is None:
+                return None
+            if existing_request["operation"] != "add-item" or not hmac.compare_digest(
+                existing_request["request_hash"], request_hash
+            ):
+                raise IdempotencyConflictError(idempotency_key)
+            return self._load_cart(connection, session_id)
+
     def add_item(
         self,
         session_id: str,

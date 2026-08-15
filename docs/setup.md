@@ -11,10 +11,12 @@
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[dev]'
-npm install
-cp .env.example .env
+python -m pip install -r requirements.lock
+python -m pip install --no-deps --no-build-isolation .
+npm ci
 ```
+
+`.env.example` é apenas referência das variáveis suportadas. O runtime não carrega `.env` automaticamente; exporte/injete as variáveis no shell ou no processo quando precisar sobrescrever os defaults.
 
 Em terminais separados:
 
@@ -49,7 +51,7 @@ npx playwright install chromium
 npm run e2e
 ```
 
-O Playwright sobe API e Vite automaticamente, usa Chromium em viewport/touch mobile e cobre o fluxo crítico por entrada manual. Isso não constitui validação de câmera física.
+O Playwright sobe API e Vite automaticamente, usa Chromium em viewport/touch mobile e cobre o fluxo crítico por entrada manual, inclusive recuperação após sessão encerrada durante a página aberta. Os unit tests cobrem helpers puros do scanner; CI não exercita a integração ZXing/câmera e não constitui validação de câmera física real.
 
 ## HTTPS
 

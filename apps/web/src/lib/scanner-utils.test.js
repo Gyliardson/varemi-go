@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { cameraErrorMessage, createDuplicateGuard } from "./scanner-utils.js";
+import {
+  cameraErrorMessage,
+  createDuplicateGuard,
+  SUPPORTED_BARCODE_FORMATS,
+} from "./scanner-utils.js";
 
 describe("scanner fallbacks", () => {
   it("explains denied camera permission", () => {
@@ -18,6 +22,11 @@ describe("scanner fallbacks", () => {
     expect(cameraErrorMessage(new Error("unsupported"))).toMatch(
       /entrada manual/,
     );
+  });
+
+  it("keeps EAN-8 support distinct from unsupported UPC-E", () => {
+    expect(SUPPORTED_BARCODE_FORMATS).toContain("EAN_8");
+    expect(SUPPORTED_BARCODE_FORMATS).not.toContain("UPC_E");
   });
 
   it("suppresses only immediate duplicate values", () => {

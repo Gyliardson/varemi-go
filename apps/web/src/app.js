@@ -12,6 +12,8 @@ const storageKey = `varemi-go:${storeSlug}:session`;
 
 /** @type {{ sessionId: string } | null} */
 let sessionCredentials = readCredentials();
+/** @type {"recovering" | "active" | "ended"} */
+let sessionState = "recovering";
 /** @type {{ barcode: string, idempotencyKey: string } | null} */
 let pendingAdd = null;
 /** @type {(() => void) | null} */
@@ -83,21 +85,18 @@ async function initialize() {
 async function recoverOrCreateSession() {
   if (sessionCredentials) {
     try {
-      return await apiRequest(`/api/sessions/${sessionCredentials.sessionId}`);
+      const cart = await apiRequest(
+        `/api/sessions/${sessionCredentials.sessionId}`,
+      );
+      sessionState = "active";
+      return cart;
     } catch (error) {
-      if (
-        !(error instanceof ApiError) ||
-        !["SESSION_NOT_FOUND", "CART_EXPIRED", "SESSION_UNAUTHORIZED"].includes(
-          error.code,
-        )
-      ) {
-        throw error;
-      }
-      localStorage.removeItem(storageKey);
-      sessionCredentials = null;
+      if (!isTerminalSessionError(error)) throw error;
+      endSession();
     }
   }
 
+  sessionState = "recovering";
   const created = await apiRequest(
     `/api/stores/${encodeURIComponent(storeSlug)}/sessions`,
     {
@@ -106,18 +105,20 @@ async function recoverOrCreateSession() {
   );
   sessionCredentials = { sessionId: created.cart.id };
   localStorage.setItem(storageKey, JSON.stringify(sessionCredentials));
+  sessionState = "active";
   return created.cart;
 }
 
 /** @param {string} barcode @param {string} idempotencyKey */
 async function addBarcode(barcode, idempotencyKey) {
-  if (!sessionCredentials) return;
+  const credentials = sessionCredentials;
+  if (!credentials || sessionState !== "active") return;
   setBusy(true);
   pendingAdd = { barcode, idempotencyKey };
   elements.pendingAction.hidden = true;
   try {
     const cart = await apiRequest(
-      `/api/sessions/${sessionCredentials.sessionId}/items`,
+      `/api/sessions/${credentials.sessionId}/items`,
       {
         method: "POST",
         headers: { "Idempotency-Key": idempotencyKey },
@@ -134,6 +135,11 @@ async function addBarcode(barcode, idempotencyKey) {
     if (error instanceof TypeError) {
       elements.pendingAction.hidden = false;
       elements.feedback.textContent = "Conexão interrompida.";
+    } else if (isTerminalSessionError(error)) {
+      await recoverEndedSession(
+        "Sua sessão anterior foi encerrada. Uma nova compra foi iniciada; confirme para tentar adicionar o produto novamente.",
+        true,
+      );
     } else {
       pendingAdd = null;
       showError(error, "Não foi possível adicionar o produto.");
@@ -145,11 +151,12 @@ async function addBarcode(barcode, idempotencyKey) {
 
 /** @param {string} barcode @param {number} quantity */
 async function updateQuantity(barcode, quantity) {
-  if (!sessionCredentials) return;
+  const credentials = sessionCredentials;
+  if (!credentials || sessionState !== "active") return;
   setBusy(true);
   try {
     const cart = await apiRequest(
-      `/api/sessions/${sessionCredentials.sessionId}/items/${encodeURIComponent(barcode)}`,
+      `/api/sessions/${credentials.sessionId}/items/${encodeURIComponent(barcode)}`,
       {
         method: "PATCH",
         body: { quantity },
@@ -157,7 +164,14 @@ async function updateQuantity(barcode, quantity) {
     );
     renderCart(cart);
   } catch (error) {
-    showError(error, "Não foi possível alterar a quantidade.");
+    if (isTerminalSessionError(error)) {
+      await recoverEndedSession(
+        "Sua sessão anterior foi encerrada. Uma nova compra vazia foi iniciada.",
+        false,
+      );
+    } else {
+      showError(error, "Não foi possível alterar a quantidade.");
+    }
   } finally {
     setBusy(false);
   }
@@ -165,16 +179,24 @@ async function updateQuantity(barcode, quantity) {
 
 /** @param {string} barcode */
 async function removeItem(barcode) {
-  if (!sessionCredentials) return;
+  const credentials = sessionCredentials;
+  if (!credentials || sessionState !== "active") return;
   setBusy(true);
   try {
     const cart = await apiRequest(
-      `/api/sessions/${sessionCredentials.sessionId}/items/${encodeURIComponent(barcode)}`,
+      `/api/sessions/${credentials.sessionId}/items/${encodeURIComponent(barcode)}`,
       { method: "DELETE" },
     );
     renderCart(cart);
   } catch (error) {
-    showError(error, "Não foi possível remover o item.");
+    if (isTerminalSessionError(error)) {
+      await recoverEndedSession(
+        "Sua sessão anterior foi encerrada. Uma nova compra vazia foi iniciada.",
+        false,
+      );
+    } else {
+      showError(error, "Não foi possível remover o item.");
+    }
   } finally {
     setBusy(false);
   }
@@ -274,10 +296,9 @@ async function apiRequest(path, options = {}) {
   });
   const data = await response.json();
   if (!response.ok) {
-    const detail = data.detail ?? data;
     throw new ApiError(
-      detail.code ?? "REQUEST_FAILED",
-      detail.message ?? "Falha na requisição",
+      data.code ?? "REQUEST_FAILED",
+      data.message ?? "Falha na requisição",
     );
   }
   return data;
@@ -288,6 +309,42 @@ class ApiError extends Error {
   constructor(code, message) {
     super(message);
     this.code = code;
+  }
+}
+
+/** @param {unknown} error */
+function isTerminalSessionError(error) {
+  return (
+    error instanceof ApiError &&
+    ["SESSION_NOT_FOUND", "SESSION_UNAUTHORIZED", "CART_EXPIRED"].includes(
+      error.code,
+    )
+  );
+}
+
+function endSession() {
+  sessionState = "ended";
+  closeCamera();
+  localStorage.removeItem(storageKey);
+  sessionCredentials = null;
+}
+
+/** @param {string} message @param {boolean} preservePendingAdd */
+async function recoverEndedSession(message, preservePendingAdd) {
+  endSession();
+  setConnection("Recuperando");
+  try {
+    const cart = await recoverOrCreateSession();
+    renderCart(cart);
+    setConnection("Online");
+    elements.pendingAction.hidden = !preservePendingAdd;
+    elements.feedback.textContent = message;
+  } catch (error) {
+    setConnection("Indisponível");
+    showError(
+      error,
+      "A sessão foi encerrada e não foi possível iniciar uma nova compra.",
+    );
   }
 }
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 
@@ -124,3 +126,29 @@ def test_expired_cart_is_explicit(repository: SqliteCartRepository) -> None:
 
     with pytest.raises(CartExpiredError):
         repository.get_authorized_cart(cart.id, token, now=start + timedelta(days=2))
+
+
+def test_concurrent_same_idempotency_key_commits_once(
+    repository: SqliteCartRepository,
+) -> None:
+    cart, token = _session(repository)
+    quote = DemoCatalogProvider().get_quote(cart.store, "7890000000017")
+    barrier = Barrier(2)
+
+    def add_once(_index: int) -> int:
+        barrier.wait()
+        result = repository.add_item(
+            cart.id,
+            token,
+            quote,
+            idempotency_key="request-concurrent",
+            request_hash="same-concurrent-hash",
+        )
+        return result.items[0].quantity
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        quantities = list(pool.map(add_once, range(2)))
+
+    assert quantities == [1, 1]
+    persisted = repository.get_authorized_cart(cart.id, token)
+    assert persisted.items[0].quantity == 1

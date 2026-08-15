@@ -42,11 +42,11 @@ SQLite é usado somente como persistência do MVP/demo. A migration cria `stores
 
 Mutações usam `BEGIN IMMEDIATE`, foreign keys por conexão e `busy_timeout`. Valores monetários são inteiros em centavos de BRL.
 
-A adição por scan exige `Idempotency-Key`. Repetir a mesma chave com o mesmo payload não incrementa novamente; reutilizar a chave para outro payload retorna conflito.
+A adição por scan exige `Idempotency-Key`. Replay já commitado da mesma chave/payload é resolvido da persistência antes de chamar o provider; a mesma checagem permanece dentro da transação de `add_item` para races. Repetir a mesma chave não incrementa novamente; reutilizá-la para outro payload retorna conflito. Nenhuma transação SQLite permanece aberta durante consulta externa ao provider.
 
 ## Política de preço no carrinho
 
-Cada adição consulta novamente o provider. Se o barcode já existe no carrinho e o quote mudou, o MVP reaplica o quote recém-obtido à linha inteira e incrementa a quantidade. Essa política é deliberada e deve ser revisitada com o primeiro varejista, pois promoções/regras reais podem exigir semântica distinta. O response preserva `priceSource` e `priceEffectiveAt`.
+Cada nova adição (chave idempotente ainda não commitada) consulta o provider; replay commitado não depende novamente dele. Se o barcode já existe no carrinho e o quote mudou, o MVP reaplica o quote recém-obtido à linha inteira e incrementa a quantidade. Essa política é deliberada e deve ser revisitada com o primeiro varejista, pois promoções/regras reais podem exigir semântica distinta. O response preserva `priceSource` e `priceEffectiveAt`.
 
 Não existe cache de preço nesta slice.
 
