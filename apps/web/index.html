@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f4f8ff" />
     <meta
       name="description"
       content="Varemi Go: acompanhe produtos e o total da compra pelo navegador."
@@ -15,99 +15,218 @@
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <main class="shell">
+    <main id="app-shell" class="shell" aria-busy="false">
       <header class="app-header">
-        <div>
+        <div class="brand-copy">
           <p class="eyebrow">Varemi Go</p>
           <h1 id="store-name">Abrindo loja…</h1>
+          <p class="store-subtitle">
+            Escaneie seus produtos e acompanhe sua compra com tranquilidade.
+          </p>
         </div>
-        <span id="connection-status" class="status-pill" aria-live="polite"
+        <span
+          id="connection-status"
+          class="status-pill"
+          data-state="connecting"
+          aria-live="polite"
           >Conectando</span
         >
       </header>
 
-      <section class="scan-card" aria-labelledby="scan-title">
+      <section class="scan-card app-card" aria-labelledby="scan-title">
         <div class="section-heading">
-          <div>
-            <p class="step">1</p>
-            <h2 id="scan-title">Adicionar produto</h2>
+          <div class="section-heading-copy">
+            <span class="step" aria-hidden="true">1</span>
+            <div>
+              <h2 id="scan-title">Adicionar produto</h2>
+              <p class="section-description">
+                Escaneie ou digite o código de barras.
+              </p>
+            </div>
           </div>
-          <button id="camera-button" class="secondary-button" type="button">
-            Usar câmera
+          <button
+            id="camera-button"
+            class="secondary-button camera-button"
+            type="button"
+            aria-expanded="false"
+            aria-controls="camera-panel"
+          >
+            <svg
+              class="button-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path
+                d="M8.6 5.5 9.8 3.8h4.4l1.2 1.7H18a3 3 0 0 1 3 3v8.3a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8.5a3 3 0 0 1 3-3h2.6Z"
+              />
+              <circle cx="12" cy="12.5" r="3.2" />
+            </svg>
+            <span>Usar câmera</span>
           </button>
         </div>
 
         <div id="camera-panel" class="camera-panel" hidden>
-          <video
-            id="camera-video"
-            playsinline
-            muted
-            aria-label="Visualização da câmera"
-          ></video>
-          <button id="stop-camera-button" class="text-button" type="button">
-            Fechar câmera
-          </button>
+          <div class="camera-viewport">
+            <video
+              id="camera-video"
+              playsinline
+              muted
+              aria-label="Visualização da câmera"
+            ></video>
+            <div class="scanner-guide" aria-hidden="true">
+              <span class="scanner-corner scanner-corner--top-left"></span>
+              <span class="scanner-corner scanner-corner--top-right"></span>
+              <span class="scanner-corner scanner-corner--bottom-left"></span>
+              <span class="scanner-corner scanner-corner--bottom-right"></span>
+              <span class="scanner-line"></span>
+            </div>
+          </div>
+          <div class="camera-footer">
+            <p>Aponte para o código e mantenha o produto firme.</p>
+            <button id="stop-camera-button" class="text-button" type="button">
+              Fechar câmera
+            </button>
+          </div>
         </div>
 
         <form id="barcode-form" class="barcode-form">
-          <label for="barcode-input">Código de barras</label>
+          <label class="field-label" for="barcode-input">
+            <span class="field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M4 5v14M7 5v14M11 5v14M14 5v14M19 5v14M17 5v14" />
+              </svg>
+            </span>
+            Código de barras
+          </label>
           <div class="input-row">
-            <input
-              id="barcode-input"
-              name="barcode"
-              inputmode="numeric"
-              autocomplete="off"
-              enterkeyhint="done"
-              placeholder="Ex.: 7890000000017"
-              required
-            />
-            <button class="primary-button" type="submit">Adicionar</button>
+            <div class="input-shell">
+              <input
+                id="barcode-input"
+                name="barcode"
+                inputmode="numeric"
+                autocomplete="off"
+                enterkeyhint="done"
+                placeholder="Ex.: 7890000000017"
+                required
+              />
+            </div>
+            <button class="primary-button" type="submit">
+              <svg
+                class="button-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span>Adicionar</span>
+            </button>
           </div>
           <p class="hint">
-            Se a câmera não funcionar, digite os números impressos abaixo do
-            código.
+            <span class="hint-icon" aria-hidden="true">i</span>
+            <span>
+              Se a câmera não funcionar, digite os números impressos abaixo do
+              código.
+            </span>
           </p>
         </form>
 
         <div id="pending-action" class="pending-action" hidden>
-          <p>
-            Não foi possível confirmar a operação. A mesma tentativa pode ser
-            reenviada com segurança.
-          </p>
-          <button id="retry-button" class="secondary-button" type="button">
-            Tentar novamente
-          </button>
+          <div class="pending-icon" aria-hidden="true">!</div>
+          <div>
+            <p>
+              Não foi possível confirmar a operação. A mesma tentativa pode ser
+              reenviada com segurança.
+            </p>
+            <button id="retry-button" class="secondary-button" type="button">
+              Tentar novamente
+            </button>
+          </div>
         </div>
-        <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+
+        <p
+          id="feedback"
+          class="feedback"
+          role="status"
+          aria-live="polite"
+          data-tone="neutral"
+        ></p>
       </section>
 
-      <section class="cart-section" aria-labelledby="cart-title">
+      <section class="cart-section app-card" aria-labelledby="cart-title">
         <div class="section-heading">
-          <div>
-            <p class="step">2</p>
-            <h2 id="cart-title">Seu acompanhamento</h2>
+          <div class="section-heading-copy">
+            <span class="step" aria-hidden="true">2</span>
+            <div>
+              <h2 id="cart-title">Seu acompanhamento</h2>
+              <p class="section-description">
+                Itens e total atualizados durante a compra.
+              </p>
+            </div>
           </div>
-          <span id="item-count" class="item-count">0 itens</span>
+          <span id="item-count" class="item-count">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M3 4h2l1.6 9.2h9.8l1.5-6.1H7.2" />
+              <circle cx="9" cy="18.5" r="1.2" />
+              <circle cx="16" cy="18.5" r="1.2" />
+            </svg>
+            <span id="item-count-value">0 itens</span>
+          </span>
         </div>
 
         <div id="empty-cart" class="empty-cart">
+          <div class="empty-illustration" aria-hidden="true">
+            <svg viewBox="0 0 160 120" focusable="false">
+              <ellipse cx="80" cy="104" rx="50" ry="8" />
+              <circle cx="79" cy="55" r="42" />
+              <path d="M46 34h11l10 51h50l9-38H62" />
+              <circle cx="76" cy="93" r="6" />
+              <circle cx="111" cy="93" r="6" />
+              <path d="m35 39 3 3 6-7M129 29l2 2 4-5M137 71h6M140 68v6" />
+            </svg>
+          </div>
           <p>Seu carrinho está vazio.</p>
           <span>Adicione um produto para começar a acompanhar o total.</span>
         </div>
+
         <ul
           id="cart-items"
           class="cart-items"
           aria-label="Itens do carrinho"
         ></ul>
 
-        <div class="total-card" aria-live="polite">
-          <span>Total acompanhado</span>
-          <strong id="cart-total">R$ 0,00</strong>
+        <div class="cart-summary">
+          <div class="total-card" aria-live="polite">
+            <span class="total-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <rect x="3.5" y="6" width="17" height="12" rx="2" />
+                <circle cx="12" cy="12" r="2.5" />
+                <path d="M6.5 9.5h.01M17.5 14.5h.01" />
+              </svg>
+            </span>
+            <div class="total-copy">
+              <span>Total acompanhado</span>
+              <small>Conforme os itens registrados no Varemi Go</small>
+            </div>
+            <strong id="cart-total">R$ 0,00</strong>
+          </div>
+
+          <p class="checkout-note">
+            <span class="note-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path
+                  d="M12 3 5 6v5c0 4.7 2.8 8.4 7 10 4.2-1.6 7-5.3 7-10V6l-7-3Z"
+                />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            </span>
+            <span>
+              Este total é um acompanhamento. No MVP atual, os produtos ainda
+              são registrados normalmente no caixa.
+            </span>
+          </p>
         </div>
-        <p class="checkout-note">
-          Este total é um acompanhamento. No MVP atual, os produtos ainda são
-          registrados normalmente no caixa.
-        </p>
       </section>
     </main>
 
