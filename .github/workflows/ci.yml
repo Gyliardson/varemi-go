@@ -1,16 +1,19 @@
-name: formatter-artifact-diagnostic
+name: formatter-commit-diagnostic
 
 on:
   push:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  format-artifact:
+  format-commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: feat/first-vertical-slice
+          fetch-depth: 0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
@@ -21,16 +24,12 @@ jobs:
       - run: npm install
       - run: ruff format .
       - run: npx prettier --write apps/web e2e playwright.config.js package.json eslint.config.js
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: formatted-sources
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            apps/web
-            e2e
-            src
-            tests
-            playwright.config.js
-            eslint.config.js
-            package.json
+      - name: Commit canonical formatting
+        run: |
+          git config user.name "Gyliardson Keitison"
+          git config user.email "100867910+Gyliardson@users.noreply.github.com"
+          git add apps/web e2e src tests playwright.config.js eslint.config.js package.json
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m "style: apply canonical formatting"
+          git push origin HEAD:refs/heads/automation/format-output
