@@ -197,7 +197,10 @@ async function reconcileQuantityConflict(sessionId) {
         false,
       );
     } else {
-      showError(error, "Não foi possível recuperar o estado atual do carrinho.");
+      showError(
+        error,
+        "Não foi possível recuperar o estado atual do carrinho.",
+      );
     }
   }
 }
