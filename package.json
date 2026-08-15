@@ -11,7 +11,7 @@
     "web:build": "vite build --config apps/web/vite.config.js",
     "web:typecheck": "tsc -p apps/web/tsconfig.json --noEmit",
     "web:lint": "eslint apps/web --max-warnings=0",
-    "web:format:check": "prettier --check apps/web package.json eslint.config.js",
+    "web:format:check": "prettier --check apps/web e2e playwright.config.js package.json eslint.config.js",
     "web:test": "vitest run --config apps/web/vitest.config.js --coverage",
     "e2e": "playwright test"
   },

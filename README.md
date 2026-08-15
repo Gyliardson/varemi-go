@@ -1,33 +1,49 @@
 # Varemi Go
 
-Varemi Go é um MVP **source-available** para acompanhamento de compra em mercados pelo navegador móvel:
+Varemi Go é um MVP **source-available** para acompanhar a compra em mercados pelo navegador móvel:
 
 **QR da loja → scanner web → backend consulta produto/preço autoritativo → carrinho → total atualizado durante a compra.**
 
-O cliente não informa preço, desconto ou total ao servidor. O QR identifica a loja/unidade e não carrega secrets nem preços autoritativos.
+O QR identifica somente a loja/unidade. O navegador envia o barcode e intenções do usuário; preço, quantidade persistida e total são calculados no servidor.
 
-## Escopo desta branch `main` de bootstrap
+## MVP atual
 
-O commit inicial estabelece licença, estrutura, qualidade, CI, segurança e documentação. A primeira vertical slice funcional entra em branch + pull request imediatamente após este bootstrap.
+A primeira vertical slice implementa:
 
-O produto-alvo desta fase continua sendo: acesso mobile web por URL/QR, sessão pseudônima, scanner com fallback manual, provider demo determinístico, carrinho autoritativo persistido e total calculado no servidor.
+- URL de loja demo pronta para ser codificada em QR: `/#/store/demo-market`;
+- sessão anônima/pseudônima, sem cadastro;
+- credencial de sessão em cookie `HttpOnly` separado do `session_id`;
+- scanner web para EAN-13, EAN-8, UPC-A e UPC-E com entrada manual sempre disponível;
+- tratamento de permissão negada, câmera ausente/incompatível, barcode inválido/desconhecido e falha de rede;
+- supressão de leituras repetidas no scanner e idempotência server-side para retry de adição;
+- provider demo determinístico atrás de contrato interno de catálogo/preço;
+- carrinho autoritativo persistido em SQLite;
+- adicionar, alterar quantidade, remover, totalizar, expirar e recuperar após refresh;
+- proveniência básica de preço;
+- testes de domínio, persistência, API, web e E2E mobile/full-stack configurado em Playwright.
 
-Fora do escopo atual: handoff para PDV, pagamento, emissão fiscal, self-checkout, antifraude avançado, visão computacional, IA, analytics sofisticado e aplicativo nativo.
 
-## Estado do repositório
+O teste automatizado do scanner cobre lógica/fallbacks, **não valida câmera física real**.
 
-A branch `main` contém o bootstrap. A primeira vertical slice deve entrar via pull request após o bootstrap, sem merge automático.
+Fora do escopo: handoff para PDV, pagamento, emissão fiscal, self-checkout, antifraude avançado, visão computacional, IA, analytics sofisticado e aplicativo nativo.
 
-## Setup local
+## Arquitetura e desenvolvimento
 
-Consulte [`docs/setup.md`](docs/setup.md).
+- [`docs/architecture.md`](docs/architecture.md) — fronteiras e invariantes implementados;
+- [`docs/setup.md`](docs/setup.md) — setup e comandos de qualidade;
+- [`docs/api.md`](docs/api.md) — endpoints da vertical slice;
+- [`docs/integrations/catalog-provider.md`](docs/integrations/catalog-provider.md) — contrato do provider;
+- [`docs/adr`](docs/adr) — decisões técnicas;
+- [`docs/roadmap.md`](docs/roadmap.md) — MVP vs. futuro.
 
-## Arquitetura
+A cobertura Python falha abaixo de 85%. A lógica web unit-testável também possui threshold de 85%; a integração de UI é coberta pelo Playwright em viewport mobile.
 
-Consulte [`docs/architecture.md`](docs/architecture.md), os ADRs em [`docs/adr`](docs/adr) e o contrato do provider em [`docs/integrations/catalog-provider.md`](docs/integrations/catalog-provider.md).
+## Fluxo de contribuição
+
+O bootstrap inicial foi criado diretamente em `main`. Mudanças normais posteriores seguem branch + pull request. Consulte [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Licença
 
-Varemi Go é publicamente visível, mas **não é open source nesta fase**. O código é licenciado sob Business Source License 1.1 com Additional Use Grant `None`. Uso não produtivo é permitido nos termos da BSL; uso em produção exige a licença/autorização aplicável. Na Change Date, a versão correspondente passa à Change License definida no arquivo [`LICENSE`](LICENSE), conforme os próprios termos da BSL.
+Varemi Go é publicamente visível, mas **não é open source nesta fase**. O código é licenciado sob Business Source License 1.1 com Additional Use Grant `None`. Uso não produtivo é permitido nos termos da BSL; uso em produção antes da mudança de licença exige licença/autorização aplicável. Na Change Date, a versão correspondente passa à Change License definida no [`LICENSE`](LICENSE), nos termos da própria BSL.
 
 A licença do código não concede direitos sobre a marca Varemi ou Varemi Go. Consulte [`docs/licensing.md`](docs/licensing.md).

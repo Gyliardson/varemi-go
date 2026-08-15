@@ -10,5 +10,6 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": []
   },
-  "include": ["src/**/*.js", "*.js"]
+  "include": ["src/**/*.js"],
+  "exclude": ["src/**/*.test.js"]
 }
