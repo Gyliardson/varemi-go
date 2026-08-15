@@ -19,8 +19,7 @@ def _has_valid_check_digit(gtin: str) -> bool:
     body = digits[:-1]
     check_digit = digits[-1]
     weighted_sum = sum(
-        digit * (3 if (len(body) - index) % 2 == 1 else 1)
-        for index, digit in enumerate(body)
+        digit * (3 if (len(body) - index) % 2 == 1 else 1) for index, digit in enumerate(body)
     )
     expected = (10 - (weighted_sum % 10)) % 10
     return expected == check_digit

@@ -83,7 +83,6 @@ def test_idempotent_add_does_not_double_increment(repository: SqliteCartReposito
         )
 
 
-
 def test_rescanning_existing_item_reprices_the_whole_line(repository: SqliteCartRepository) -> None:
     cart, token = _session(repository)
     original = DemoCatalogProvider().get_quote(cart.store, "7890000000017")
@@ -109,6 +108,7 @@ def test_rescanning_existing_item_reprices_the_whole_line(repository: SqliteCart
     assert cart.items[0].unit_price_cents == 2999
     assert cart.items[0].price_source == "demo-catalog:v2"
     assert cart.total_cents == 3 * 2999
+
 
 def test_session_id_is_not_authorization(repository: SqliteCartRepository) -> None:
     cart, _token = _session(repository)

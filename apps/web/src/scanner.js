@@ -1,4 +1,4 @@
-import { createDuplicateGuard } from './lib/scanner-utils.js';
+import { createDuplicateGuard } from "./lib/scanner-utils.js";
 
 /**
  * Starts a browser camera scanner. This integration is exercised with mocked browser boundaries in CI;
@@ -8,13 +8,11 @@ import { createDuplicateGuard } from './lib/scanner-utils.js';
  */
 export async function startBarcodeScanner(video, onBarcode) {
   if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('CAMERA_UNSUPPORTED');
+    throw new Error("CAMERA_UNSUPPORTED");
   }
 
-  const [{ BrowserMultiFormatOneDReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
-    import('@zxing/browser'),
-    import('@zxing/library'),
-  ]);
+  const [{ BrowserMultiFormatOneDReader }, { BarcodeFormat, DecodeHintType }] =
+    await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
   const hints = new Map();
   hints.set(DecodeHintType.POSSIBLE_FORMATS, [
     BarcodeFormat.EAN_13,
@@ -22,10 +20,12 @@ export async function startBarcodeScanner(video, onBarcode) {
     BarcodeFormat.UPC_A,
     BarcodeFormat.UPC_E,
   ]);
-  const reader = new BrowserMultiFormatOneDReader(hints, { delayBetweenScanAttempts: 80 });
+  const reader = new BrowserMultiFormatOneDReader(hints, {
+    delayBetweenScanAttempts: 80,
+  });
   const isDuplicate = createDuplicateGuard();
   const controls = await reader.decodeFromConstraints(
-    { audio: false, video: { facingMode: { ideal: 'environment' } } },
+    { audio: false, video: { facingMode: { ideal: "environment" } } },
     video,
     (/** @type {import('@zxing/library').Result | undefined} */ result) => {
       if (!result) return;

@@ -49,9 +49,7 @@ def test_full_cart_api_flow_is_authoritative_and_recoverable(client: TestClient)
     )
     assert second.json()["totalCents"] == 3448
 
-    quantity = client.patch(
-        f"/api/sessions/{session_id}/items/7890000000017", json={"quantity": 2}
-    )
+    quantity = client.patch(f"/api/sessions/{session_id}/items/7890000000017", json={"quantity": 2})
     assert quantity.json()["totalCents"] == 6247
 
     removed = client.delete(f"/api/sessions/{session_id}/items/7890000000024")

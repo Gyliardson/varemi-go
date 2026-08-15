@@ -20,5 +20,7 @@ def repository(tmp_path: Path) -> SqliteCartRepository:
 
 @pytest.fixture
 def client(repository: SqliteCartRepository) -> Iterator[TestClient]:
-    with TestClient(create_app(repository=repository, provider=DemoCatalogProvider())) as test_client:
+    with TestClient(
+        create_app(repository=repository, provider=DemoCatalogProvider())
+    ) as test_client:
         yield test_client

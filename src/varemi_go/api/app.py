@@ -150,7 +150,9 @@ def create_app(
         response_model=CartResponse,
         responses={401: {"model": ErrorBody}, 404: {"model": ErrorBody}, 410: {"model": ErrorBody}},
     )
-    def get_session(session_id: str, token: Annotated[str, Depends(_session_token)]) -> CartResponse:
+    def get_session(
+        session_id: str, token: Annotated[str, Depends(_session_token)]
+    ) -> CartResponse:
         return _authorized_cart(context, session_id, token)
 
     @app.post(
@@ -168,7 +170,9 @@ def create_app(
         session_id: str,
         request: AddItemRequest,
         token: Annotated[str, Depends(_session_token)],
-        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=8, max_length=128)],
+        idempotency_key: Annotated[
+            str, Header(alias="Idempotency-Key", min_length=8, max_length=128)
+        ],
     ) -> CartResponse:
         try:
             barcode = normalize_gtin(request.barcode)
@@ -187,7 +191,9 @@ def create_app(
                 request_hash=request_hash,
             )
         except ProductNotFoundError as error:
-            raise _http_error(404, "PRODUCT_NOT_FOUND", "Barcode is not in this store catalog") from error
+            raise _http_error(
+                404, "PRODUCT_NOT_FOUND", "Barcode is not in this store catalog"
+            ) from error
         except IdempotencyConflictError as error:
             raise _http_error(
                 409,

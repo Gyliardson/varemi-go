@@ -1,13 +1,13 @@
-import { formatBRL, formatItemCount } from './lib/format.js';
-import { storeSlugFromHash } from './lib/route.js';
-import { cameraErrorMessage } from './lib/scanner-utils.js';
-import { startBarcodeScanner } from './scanner.js';
+import { formatBRL, formatItemCount } from "./lib/format.js";
+import { storeSlugFromHash } from "./lib/route.js";
+import { cameraErrorMessage } from "./lib/scanner-utils.js";
+import { startBarcodeScanner } from "./scanner.js";
 
 /** @typedef {{barcode: string, name: string, quantity: number, unitPriceCents: number, lineTotalCents: number, promotionLabel: string | null, priceSource: string}} CartItemView
  * @typedef {{id: string, items: CartItemView[], totalCents: number}} CartView
  */
 
-const storeSlug = storeSlugFromHash(window.location.hash) ?? 'demo-market';
+const storeSlug = storeSlugFromHash(window.location.hash) ?? "demo-market";
 const storageKey = `varemi-go:${storeSlug}:session`;
 
 /** @type {{ sessionId: string } | null} */
@@ -18,49 +18,65 @@ let pendingAdd = null;
 let stopScanner = null;
 
 const elements = {
-  storeName: requiredElement('store-name'),
-  connectionStatus: requiredElement('connection-status'),
-  barcodeForm: /** @type {HTMLFormElement} */ (requiredElement('barcode-form')),
-  barcodeInput: /** @type {HTMLInputElement} */ (requiredElement('barcode-input')),
-  feedback: requiredElement('feedback'),
-  cartItems: requiredElement('cart-items'),
-  emptyCart: requiredElement('empty-cart'),
-  cartTotal: requiredElement('cart-total'),
-  itemCount: requiredElement('item-count'),
-  cameraButton: /** @type {HTMLButtonElement} */ (requiredElement('camera-button')),
-  cameraPanel: requiredElement('camera-panel'),
-  cameraVideo: /** @type {HTMLVideoElement} */ (requiredElement('camera-video')),
-  stopCameraButton: /** @type {HTMLButtonElement} */ (requiredElement('stop-camera-button')),
-  pendingAction: requiredElement('pending-action'),
-  retryButton: /** @type {HTMLButtonElement} */ (requiredElement('retry-button')),
+  storeName: requiredElement("store-name"),
+  connectionStatus: requiredElement("connection-status"),
+  barcodeForm: /** @type {HTMLFormElement} */ (requiredElement("barcode-form")),
+  barcodeInput: /** @type {HTMLInputElement} */ (
+    requiredElement("barcode-input")
+  ),
+  feedback: requiredElement("feedback"),
+  cartItems: requiredElement("cart-items"),
+  emptyCart: requiredElement("empty-cart"),
+  cartTotal: requiredElement("cart-total"),
+  itemCount: requiredElement("item-count"),
+  cameraButton: /** @type {HTMLButtonElement} */ (
+    requiredElement("camera-button")
+  ),
+  cameraPanel: requiredElement("camera-panel"),
+  cameraVideo: /** @type {HTMLVideoElement} */ (
+    requiredElement("camera-video")
+  ),
+  stopCameraButton: /** @type {HTMLButtonElement} */ (
+    requiredElement("stop-camera-button")
+  ),
+  pendingAction: requiredElement("pending-action"),
+  retryButton: /** @type {HTMLButtonElement} */ (
+    requiredElement("retry-button")
+  ),
 };
 
 void initialize();
 
-elements.barcodeForm.addEventListener('submit', (event) => {
+elements.barcodeForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const barcode = elements.barcodeInput.value.trim();
   if (!barcode) return;
   void addBarcode(barcode, crypto.randomUUID());
 });
 
-elements.cameraButton.addEventListener('click', () => void openCamera());
-elements.stopCameraButton.addEventListener('click', closeCamera);
-elements.retryButton.addEventListener('click', () => {
-  if (pendingAdd) void addBarcode(pendingAdd.barcode, pendingAdd.idempotencyKey);
+elements.cameraButton.addEventListener("click", () => void openCamera());
+elements.stopCameraButton.addEventListener("click", closeCamera);
+elements.retryButton.addEventListener("click", () => {
+  if (pendingAdd)
+    void addBarcode(pendingAdd.barcode, pendingAdd.idempotencyKey);
 });
 
 async function initialize() {
-  setConnection('Conectando');
+  setConnection("Conectando");
   try {
-    const store = await apiRequest(`/api/stores/${encodeURIComponent(storeSlug)}`);
+    const store = await apiRequest(
+      `/api/stores/${encodeURIComponent(storeSlug)}`,
+    );
     elements.storeName.textContent = store.name;
     const cart = await recoverOrCreateSession();
     renderCart(cart);
-    setConnection('Online');
+    setConnection("Online");
   } catch (error) {
-    setConnection('Indisponível');
-    showError(error, 'Não foi possível abrir a loja. Confira a conexão e tente recarregar.');
+    setConnection("Indisponível");
+    showError(
+      error,
+      "Não foi possível abrir a loja. Confira a conexão e tente recarregar.",
+    );
   }
 }
 
@@ -69,7 +85,12 @@ async function recoverOrCreateSession() {
     try {
       return await apiRequest(`/api/sessions/${sessionCredentials.sessionId}`);
     } catch (error) {
-      if (!(error instanceof ApiError) || !['SESSION_NOT_FOUND', 'CART_EXPIRED', 'SESSION_UNAUTHORIZED'].includes(error.code)) {
+      if (
+        !(error instanceof ApiError) ||
+        !["SESSION_NOT_FOUND", "CART_EXPIRED", "SESSION_UNAUTHORIZED"].includes(
+          error.code,
+        )
+      ) {
         throw error;
       }
       localStorage.removeItem(storageKey);
@@ -77,9 +98,12 @@ async function recoverOrCreateSession() {
     }
   }
 
-  const created = await apiRequest(`/api/stores/${encodeURIComponent(storeSlug)}/sessions`, {
-    method: 'POST',
-  });
+  const created = await apiRequest(
+    `/api/stores/${encodeURIComponent(storeSlug)}/sessions`,
+    {
+      method: "POST",
+    },
+  );
   sessionCredentials = { sessionId: created.cart.id };
   localStorage.setItem(storageKey, JSON.stringify(sessionCredentials));
   return created.cart;
@@ -92,23 +116,27 @@ async function addBarcode(barcode, idempotencyKey) {
   pendingAdd = { barcode, idempotencyKey };
   elements.pendingAction.hidden = true;
   try {
-    const cart = await apiRequest(`/api/sessions/${sessionCredentials.sessionId}/items`, {
-      method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey },
-      body: { barcode },
-    });
+    const cart = await apiRequest(
+      `/api/sessions/${sessionCredentials.sessionId}/items`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: { barcode },
+      },
+    );
     renderCart(cart);
     pendingAdd = null;
-    elements.barcodeInput.value = '';
-    elements.feedback.textContent = 'Produto adicionado.';
-    if (document.activeElement !== elements.barcodeInput) elements.barcodeInput.focus();
+    elements.barcodeInput.value = "";
+    elements.feedback.textContent = "Produto adicionado.";
+    if (document.activeElement !== elements.barcodeInput)
+      elements.barcodeInput.focus();
   } catch (error) {
     if (error instanceof TypeError) {
       elements.pendingAction.hidden = false;
-      elements.feedback.textContent = 'Conexão interrompida.';
+      elements.feedback.textContent = "Conexão interrompida.";
     } else {
       pendingAdd = null;
-      showError(error, 'Não foi possível adicionar o produto.');
+      showError(error, "Não foi possível adicionar o produto.");
     }
   } finally {
     setBusy(false);
@@ -123,13 +151,13 @@ async function updateQuantity(barcode, quantity) {
     const cart = await apiRequest(
       `/api/sessions/${sessionCredentials.sessionId}/items/${encodeURIComponent(barcode)}`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         body: { quantity },
       },
     );
     renderCart(cart);
   } catch (error) {
-    showError(error, 'Não foi possível alterar a quantidade.');
+    showError(error, "Não foi possível alterar a quantidade.");
   } finally {
     setBusy(false);
   }
@@ -142,11 +170,11 @@ async function removeItem(barcode) {
   try {
     const cart = await apiRequest(
       `/api/sessions/${sessionCredentials.sessionId}/items/${encodeURIComponent(barcode)}`,
-      { method: 'DELETE' },
+      { method: "DELETE" },
     );
     renderCart(cart);
   } catch (error) {
-    showError(error, 'Não foi possível remover o item.');
+    showError(error, "Não foi possível remover o item.");
   } finally {
     setBusy(false);
   }
@@ -161,7 +189,7 @@ async function openCamera() {
       elements.barcodeInput.value = barcode;
       void addBarcode(barcode, crypto.randomUUID());
     });
-    elements.feedback.textContent = 'Aponte a câmera para o código de barras.';
+    elements.feedback.textContent = "Aponte a câmera para o código de barras.";
   } catch (error) {
     elements.cameraPanel.hidden = true;
     elements.feedback.textContent = cameraErrorMessage(error);
@@ -180,8 +208,8 @@ function closeCamera() {
 function renderCart(cart) {
   elements.cartItems.replaceChildren();
   for (const item of cart.items) {
-    const row = document.createElement('li');
-    row.className = 'cart-item';
+    const row = document.createElement("li");
+    row.className = "cart-item";
     row.dataset.barcode = item.barcode;
     row.innerHTML = `
       <div class="item-copy">
@@ -197,17 +225,31 @@ function renderCart(cart) {
         </div>
         <button type="button" class="remove-button">Remover</button>
       </div>`;
-    requiredChild(row, 'strong').textContent = item.name;
-    requiredChild(row, '.price').textContent = `${formatBRL(item.unitPriceCents)} cada · ${formatBRL(item.lineTotalCents)}`;
-    requiredChild(row, '.provenance').textContent = item.promotionLabel ?? `Preço: ${item.priceSource}`;
-    requiredChild(row, '.quantity').textContent = String(item.quantity);
-    const decrement = /** @type {HTMLButtonElement} */ (requiredChild(row, '.decrement'));
-    const increment = /** @type {HTMLButtonElement} */ (requiredChild(row, '.increment'));
-    const remove = /** @type {HTMLButtonElement} */ (requiredChild(row, '.remove-button'));
+    requiredChild(row, "strong").textContent = item.name;
+    requiredChild(row, ".price").textContent =
+      `${formatBRL(item.unitPriceCents)} cada · ${formatBRL(item.lineTotalCents)}`;
+    requiredChild(row, ".provenance").textContent =
+      item.promotionLabel ?? `Preço: ${item.priceSource}`;
+    requiredChild(row, ".quantity").textContent = String(item.quantity);
+    const decrement = /** @type {HTMLButtonElement} */ (
+      requiredChild(row, ".decrement")
+    );
+    const increment = /** @type {HTMLButtonElement} */ (
+      requiredChild(row, ".increment")
+    );
+    const remove = /** @type {HTMLButtonElement} */ (
+      requiredChild(row, ".remove-button")
+    );
     decrement.disabled = item.quantity <= 1;
-    decrement.addEventListener('click', () => void updateQuantity(item.barcode, item.quantity - 1));
-    increment.addEventListener('click', () => void updateQuantity(item.barcode, item.quantity + 1));
-    remove.addEventListener('click', () => void removeItem(item.barcode));
+    decrement.addEventListener(
+      "click",
+      () => void updateQuantity(item.barcode, item.quantity - 1),
+    );
+    increment.addEventListener(
+      "click",
+      () => void updateQuantity(item.barcode, item.quantity + 1),
+    );
+    remove.addEventListener("click", () => void removeItem(item.barcode));
     elements.cartItems.append(row);
   }
   elements.emptyCart.hidden = cart.items.length > 0;
@@ -222,17 +264,21 @@ function renderCart(cart) {
  */
 async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers);
-  headers.set('Accept', 'application/json');
-  if (options.body !== undefined) headers.set('Content-Type', 'application/json');
+  headers.set("Accept", "application/json");
+  if (options.body !== undefined)
+    headers.set("Content-Type", "application/json");
   const response = await fetch(path, {
-    method: options.method ?? 'GET',
+    method: options.method ?? "GET",
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
   const data = await response.json();
   if (!response.ok) {
     const detail = data.detail ?? data;
-    throw new ApiError(detail.code ?? 'REQUEST_FAILED', detail.message ?? 'Falha na requisição');
+    throw new ApiError(
+      detail.code ?? "REQUEST_FAILED",
+      detail.message ?? "Falha na requisição",
+    );
   }
   return data;
 }
@@ -247,25 +293,35 @@ class ApiError extends Error {
 
 /** @param {unknown} error @param {string} fallback */
 function showError(error, fallback) {
-  if (error instanceof ApiError && error.code === 'PRODUCT_NOT_FOUND') {
-    elements.feedback.textContent = 'Produto não encontrado nesta loja. Confira o código ou siga para o caixa normalmente.';
+  if (error instanceof ApiError && error.code === "PRODUCT_NOT_FOUND") {
+    elements.feedback.textContent =
+      "Produto não encontrado nesta loja. Confira o código ou siga para o caixa normalmente.";
     return;
   }
-  if (error instanceof ApiError && error.code === 'INVALID_BARCODE') {
-    elements.feedback.textContent = 'Código de barras inválido. Confira os números impressos no produto.';
+  if (error instanceof ApiError && error.code === "INVALID_BARCODE") {
+    elements.feedback.textContent =
+      "Código de barras inválido. Confira os números impressos no produto.";
     return;
   }
-  elements.feedback.textContent = error instanceof Error && error.message ? error.message : fallback;
+  elements.feedback.textContent =
+    error instanceof Error && error.message ? error.message : fallback;
 }
 
 /** @param {boolean} busy */
 function setBusy(busy) {
-  for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('button'))) button.disabled = busy;
+  for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (
+    document.querySelectorAll("button")
+  ))
+    button.disabled = busy;
   elements.barcodeInput.disabled = busy;
   if (!busy) {
-    for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (elements.cartItems.querySelectorAll('.decrement'))) {
-      const row = button.closest('.cart-item');
-      const quantity = Number(row?.querySelector('.quantity')?.textContent ?? '1');
+    for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (
+      elements.cartItems.querySelectorAll(".decrement")
+    )) {
+      const row = button.closest(".cart-item");
+      const quantity = Number(
+        row?.querySelector(".quantity")?.textContent ?? "1",
+      );
       button.disabled = quantity <= 1;
     }
   }
@@ -282,7 +338,9 @@ function readCredentials() {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw);
-    return typeof value.sessionId === 'string' ? { sessionId: value.sessionId } : null;
+    return typeof value.sessionId === "string"
+      ? { sessionId: value.sessionId }
+      : null;
   } catch {
     return null;
   }
@@ -298,13 +356,23 @@ function requiredElement(id) {
 /** @param {ParentNode} root @param {string} selector */
 function requiredChild(root, selector) {
   const element = root.querySelector(selector);
-  if (!(element instanceof HTMLElement)) throw new Error(`Missing required child: ${selector}`);
+  if (!(element instanceof HTMLElement))
+    throw new Error(`Missing required child: ${selector}`);
   return element;
 }
 
 /** @param {string} value */
 function escapeText(value) {
   /** @type {Record<string, string>} */
-  const replacements = { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' };
-  return value.replace(/[&<>'"]/g, (character) => replacements[character] ?? character);
+  const replacements = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  };
+  return value.replace(
+    /[&<>'"]/g,
+    (character) => replacements[character] ?? character,
+  );
 }
