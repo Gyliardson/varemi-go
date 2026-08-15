@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.62.1",
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.2.1",
     "globals": "16.4.0",
