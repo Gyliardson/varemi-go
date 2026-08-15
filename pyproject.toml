@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "varemi-go"
+version = "0.1.0"
+description = "Source-available mobile-web MVP for authoritative retail cart tracking."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi==0.139.0",
+  "uvicorn==0.48.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx==0.28.1",
+  "pytest==9.0.2",
+  "pytest-cov==7.0.0",
+  "ruff==0.16.3",
+  "mypy>=1.15,<2",
+  "pip-audit>=2.9,<3",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/varemi_go"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config --cov=varemi_go --cov-report=term-missing --cov-fail-under=85"
+
+[tool.coverage.run]
+branch = true
+source = ["varemi_go"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 85
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests", "apps/api"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+mypy_path = "src"
+packages = ["varemi_go"]

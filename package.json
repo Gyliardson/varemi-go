@@ -1,0 +1,33 @@
+{
+  "name": "varemi-go-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "web:dev": "vite --config apps/web/vite.config.js",
+    "web:build": "vite build --config apps/web/vite.config.js",
+    "web:typecheck": "tsc -p apps/web/tsconfig.json --noEmit",
+    "web:lint": "eslint apps/web --max-warnings=0",
+    "web:format:check": "prettier --check apps/web package.json eslint.config.js",
+    "web:test": "vitest run --config apps/web/vitest.config.js --coverage",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@zxing/browser": "0.2.1",
+    "@zxing/library": "0.23.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.62.0",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "10.2.1",
+    "globals": "16.4.0",
+    "prettier": "3.6.2",
+    "typescript": "7.0.2",
+    "vite": "8.1.5",
+    "vitest": "4.1.10"
+  }
+}

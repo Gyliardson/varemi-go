@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+
+# Runtime data
+.var/
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend
+node_modules/
+dist/
+playwright-report/
+test-results/
+coverage/
+
+# Environment / editor
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
