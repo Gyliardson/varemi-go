@@ -1,0 +1,40 @@
+name: stage-nonworkflow-blobs
+
+on:
+  push:
+    branches: [feat/first-vertical-slice]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  stage:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download verified tree artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-tree
+          path: /tmp/input
+          github-token: ${{ github.token }}
+          repository: Gyliardson/varemi-go
+          run-id: 31895184341
+      - name: Create non-workflow blobs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/tree
+          tar -xzf /tmp/input/verified-tree.tgz -C /tmp/tree
+          while IFS= read -r path; do
+            test -z "$path" && continue
+            case "$path" in
+              .github/workflows/*) continue ;;
+            esac
+            content=$(base64 -w0 "/tmp/tree/final-tree/files/$path")
+            sha=$(gh api --method POST "repos/$GH_REPO/git/blobs" -f content="$content" -f encoding=base64 --jq .sha)
+            printf 'FINAL_BLOB\t%s\t%s\n' "$path" "$sha"
+          done < /tmp/tree/final-tree/files.txt
