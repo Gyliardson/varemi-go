@@ -18,8 +18,10 @@ let sessionState = "recovering";
 let pendingAdd = null;
 /** @type {(() => void) | null} */
 let stopScanner = null;
+let recoveredExistingSession = false;
 
 const elements = {
+  appShell: requiredElement("app-shell"),
   storeName: requiredElement("store-name"),
   connectionStatus: requiredElement("connection-status"),
   barcodeForm: /** @type {HTMLFormElement} */ (requiredElement("barcode-form")),
@@ -30,7 +32,7 @@ const elements = {
   cartItems: requiredElement("cart-items"),
   emptyCart: requiredElement("empty-cart"),
   cartTotal: requiredElement("cart-total"),
-  itemCount: requiredElement("item-count"),
+  itemCount: requiredElement("item-count-value"),
   cameraButton: /** @type {HTMLButtonElement} */ (
     requiredElement("camera-button")
   ),
@@ -73,6 +75,9 @@ async function initialize() {
     const cart = await recoverOrCreateSession();
     renderCart(cart);
     setConnection("Online");
+    if (recoveredExistingSession) {
+      setFeedback("Sua compra foi recuperada neste dispositivo.", "info");
+    }
   } catch (error) {
     setConnection("Indisponível");
     showError(
@@ -83,12 +88,14 @@ async function initialize() {
 }
 
 async function recoverOrCreateSession() {
+  recoveredExistingSession = false;
   if (sessionCredentials) {
     try {
       const cart = await apiRequest(
         `/api/sessions/${sessionCredentials.sessionId}`,
       );
       sessionState = "active";
+      recoveredExistingSession = true;
       return cart;
     } catch (error) {
       if (!isTerminalSessionError(error)) throw error;
@@ -114,6 +121,7 @@ async function addBarcode(barcode, idempotencyKey) {
   const credentials = sessionCredentials;
   if (!credentials || sessionState !== "active") return;
   setBusy(true);
+  setFeedback("Consultando produto e preço…", "loading");
   pendingAdd = { barcode, idempotencyKey };
   elements.pendingAction.hidden = true;
   try {
@@ -125,16 +133,16 @@ async function addBarcode(barcode, idempotencyKey) {
         body: { barcode },
       },
     );
-    renderCart(cart);
+    renderCart(cart, barcode);
     pendingAdd = null;
     elements.barcodeInput.value = "";
-    elements.feedback.textContent = "Produto adicionado.";
+    setFeedback("Produto adicionado.", "success");
     if (document.activeElement !== elements.barcodeInput)
       elements.barcodeInput.focus();
   } catch (error) {
     if (error instanceof TypeError) {
       elements.pendingAction.hidden = false;
-      elements.feedback.textContent = "Conexão interrompida.";
+      setFeedback("Conexão interrompida.", "error");
     } else if (isTerminalSessionError(error)) {
       await recoverEndedSession(
         "Sua sessão anterior foi encerrada. Uma nova compra foi iniciada; confirme para tentar adicionar o produto novamente.",
@@ -158,6 +166,7 @@ async function updateQuantity(barcode, quantity, expectedQuantity) {
   const credentials = sessionCredentials;
   if (!credentials || sessionState !== "active") return;
   setBusy(true);
+  setFeedback("Atualizando quantidade…", "loading");
   try {
     const cart = await apiRequest(
       `/api/sessions/${credentials.sessionId}/items/${encodeURIComponent(barcode)}`,
@@ -167,6 +176,7 @@ async function updateQuantity(barcode, quantity, expectedQuantity) {
       },
     );
     renderCart(cart);
+    setFeedback("Quantidade atualizada.", "success");
   } catch (error) {
     if (error instanceof ApiError && error.code === "QUANTITY_CONFLICT") {
       await reconcileQuantityConflict(credentials.sessionId);
@@ -188,8 +198,10 @@ async function reconcileQuantityConflict(sessionId) {
   try {
     const cart = await apiRequest(`/api/sessions/${sessionId}`);
     renderCart(cart);
-    elements.feedback.textContent =
-      "O carrinho mudou em outra aba ou por um novo scan. Estado atualizado; confirme a quantidade novamente.";
+    setFeedback(
+      "O carrinho mudou em outra aba ou por um novo scan. Estado atualizado; confirme a quantidade novamente.",
+      "info",
+    );
   } catch (error) {
     if (isTerminalSessionError(error)) {
       await recoverEndedSession(
@@ -210,12 +222,14 @@ async function removeItem(barcode) {
   const credentials = sessionCredentials;
   if (!credentials || sessionState !== "active") return;
   setBusy(true);
+  setFeedback("Removendo produto…", "loading");
   try {
     const cart = await apiRequest(
       `/api/sessions/${credentials.sessionId}/items/${encodeURIComponent(barcode)}`,
       { method: "DELETE" },
     );
     renderCart(cart);
+    setFeedback("Produto removido.", "success");
   } catch (error) {
     if (isTerminalSessionError(error)) {
       await recoverEndedSession(
@@ -233,16 +247,19 @@ async function removeItem(barcode) {
 async function openCamera() {
   closeCamera();
   elements.cameraPanel.hidden = false;
+  elements.cameraButton.setAttribute("aria-expanded", "true");
+  setFeedback("Iniciando câmera…", "loading");
   try {
     stopScanner = await startBarcodeScanner(elements.cameraVideo, (barcode) => {
       closeCamera();
       elements.barcodeInput.value = barcode;
       void addBarcode(barcode, crypto.randomUUID());
     });
-    elements.feedback.textContent = "Aponte a câmera para o código de barras.";
+    setFeedback("Aponte a câmera para o código de barras.", "info");
   } catch (error) {
     elements.cameraPanel.hidden = true;
-    elements.feedback.textContent = cameraErrorMessage(error);
+    elements.cameraButton.setAttribute("aria-expanded", "false");
+    setFeedback(cameraErrorMessage(error), "error");
     elements.barcodeInput.focus();
   }
 }
@@ -251,15 +268,19 @@ function closeCamera() {
   stopScanner?.();
   stopScanner = null;
   elements.cameraPanel.hidden = true;
+  elements.cameraButton.setAttribute("aria-expanded", "false");
   elements.cameraVideo.srcObject = null;
 }
 
-/** @param {CartView} cart */
-function renderCart(cart) {
+/** @param {CartView} cart @param {string | null} [highlightBarcode] */
+function renderCart(cart, highlightBarcode = null) {
   elements.cartItems.replaceChildren();
   for (const item of cart.items) {
     const row = document.createElement("li");
     row.className = "cart-item";
+    if (item.barcode === highlightBarcode) {
+      row.classList.add("cart-item--fresh");
+    }
     row.dataset.barcode = item.barcode;
     row.innerHTML = `
       <div class="item-copy">
@@ -366,7 +387,7 @@ async function recoverEndedSession(message, preservePendingAdd) {
     renderCart(cart);
     setConnection("Online");
     elements.pendingAction.hidden = !preservePendingAdd;
-    elements.feedback.textContent = message;
+    setFeedback(message, "info");
   } catch (error) {
     setConnection("Indisponível");
     showError(
@@ -379,17 +400,23 @@ async function recoverEndedSession(message, preservePendingAdd) {
 /** @param {unknown} error @param {string} fallback */
 function showError(error, fallback) {
   if (error instanceof ApiError && error.code === "PRODUCT_NOT_FOUND") {
-    elements.feedback.textContent =
-      "Produto não encontrado nesta loja. Confira o código ou siga para o caixa normalmente.";
+    setFeedback(
+      "Produto não encontrado nesta loja. Confira o código ou siga para o caixa normalmente.",
+      "error",
+    );
     return;
   }
   if (error instanceof ApiError && error.code === "INVALID_BARCODE") {
-    elements.feedback.textContent =
-      "Código de barras inválido. Confira os números impressos no produto.";
+    setFeedback(
+      "Código de barras inválido. Confira os números impressos no produto.",
+      "error",
+    );
     return;
   }
-  elements.feedback.textContent =
-    error instanceof Error && error.message ? error.message : fallback;
+  setFeedback(
+    error instanceof Error && error.message ? error.message : fallback,
+    "error",
+  );
 }
 
 /** @param {boolean} busy */
@@ -399,6 +426,8 @@ function setBusy(busy) {
   ))
     button.disabled = busy;
   elements.barcodeInput.disabled = busy;
+  elements.appShell.setAttribute("aria-busy", String(busy));
+  document.body.classList.toggle("is-busy", busy);
   if (!busy) {
     for (const button of /** @type {NodeListOf<HTMLButtonElement>} */ (
       elements.cartItems.querySelectorAll(".decrement")
@@ -414,7 +443,25 @@ function setBusy(busy) {
 
 /** @param {string} text */
 function setConnection(text) {
+  const state =
+    text === "Online"
+      ? "online"
+      : text === "Indisponível"
+        ? "offline"
+        : text === "Recuperando"
+          ? "recovering"
+          : "connecting";
   elements.connectionStatus.textContent = text;
+  elements.connectionStatus.dataset.state = state;
+}
+
+/**
+ * @param {string} text
+ * @param {"neutral" | "success" | "error" | "info" | "loading"} [tone]
+ */
+function setFeedback(text, tone = "neutral") {
+  elements.feedback.textContent = text;
+  elements.feedback.dataset.tone = tone;
 }
 
 /** @returns {{sessionId: string} | null} */
