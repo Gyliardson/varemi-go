@@ -9,7 +9,7 @@ description = "Source-available mobile-web MVP for authoritative retail cart tra
 requires-python = ">=3.13,<3.14"
 dependencies = [
   "fastapi==0.139.0",
-  "uvicorn==0.48.0",
+  "uvicorn==0.52.1",
 ]
 
 [project.optional-dependencies]
