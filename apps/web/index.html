@@ -2,15 +2,115 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="theme-color" content="#ffffff" />
+    <meta
+      name="description"
+      content="Varemi Go: acompanhe produtos e o total da compra pelo navegador."
+    />
     <title>Varemi Go</title>
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <main id="app">
-      <h1>Varemi Go</h1>
-      <p>Bootstrap pronto. A experiência da loja entra na primeira vertical slice.</p>
+    <main class="shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Varemi Go</p>
+          <h1 id="store-name">Abrindo loja…</h1>
+        </div>
+        <span id="connection-status" class="status-pill" aria-live="polite"
+          >Conectando</span
+        >
+      </header>
+
+      <section class="scan-card" aria-labelledby="scan-title">
+        <div class="section-heading">
+          <div>
+            <p class="step">1</p>
+            <h2 id="scan-title">Adicionar produto</h2>
+          </div>
+          <button id="camera-button" class="secondary-button" type="button">
+            Usar câmera
+          </button>
+        </div>
+
+        <div id="camera-panel" class="camera-panel" hidden>
+          <video
+            id="camera-video"
+            playsinline
+            muted
+            aria-label="Visualização da câmera"
+          ></video>
+          <button id="stop-camera-button" class="text-button" type="button">
+            Fechar câmera
+          </button>
+        </div>
+
+        <form id="barcode-form" class="barcode-form">
+          <label for="barcode-input">Código de barras</label>
+          <div class="input-row">
+            <input
+              id="barcode-input"
+              name="barcode"
+              inputmode="numeric"
+              autocomplete="off"
+              enterkeyhint="done"
+              placeholder="Ex.: 7890000000017"
+              required
+            />
+            <button class="primary-button" type="submit">Adicionar</button>
+          </div>
+          <p class="hint">
+            Se a câmera não funcionar, digite os números impressos abaixo do
+            código.
+          </p>
+        </form>
+
+        <div id="pending-action" class="pending-action" hidden>
+          <p>
+            Não foi possível confirmar a operação. A mesma tentativa pode ser
+            reenviada com segurança.
+          </p>
+          <button id="retry-button" class="secondary-button" type="button">
+            Tentar novamente
+          </button>
+        </div>
+        <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="cart-section" aria-labelledby="cart-title">
+        <div class="section-heading">
+          <div>
+            <p class="step">2</p>
+            <h2 id="cart-title">Seu acompanhamento</h2>
+          </div>
+          <span id="item-count" class="item-count">0 itens</span>
+        </div>
+
+        <div id="empty-cart" class="empty-cart">
+          <p>Seu carrinho está vazio.</p>
+          <span>Adicione um produto para começar a acompanhar o total.</span>
+        </div>
+        <ul
+          id="cart-items"
+          class="cart-items"
+          aria-label="Itens do carrinho"
+        ></ul>
+
+        <div class="total-card" aria-live="polite">
+          <span>Total acompanhado</span>
+          <strong id="cart-total">R$ 0,00</strong>
+        </div>
+        <p class="checkout-note">
+          Este total é um acompanhamento. No MVP atual, os produtos ainda são
+          registrados normalmente no caixa.
+        </p>
+      </section>
     </main>
+
     <script type="module" src="/src/app.js"></script>
   </body>
 </html>

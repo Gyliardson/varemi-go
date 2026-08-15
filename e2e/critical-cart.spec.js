@@ -1,0 +1,195 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+
+test("mobile shopper can track and recover an authoritative demo cart", async ({
+  page,
+}) => {
+  await page.goto("/#/store/demo-market");
+
+  await expect(
+    page.getByRole("heading", { name: "Mercado Demo" }),
+  ).toBeVisible();
+  await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+
+  const barcode = page.getByLabel("Código de barras");
+  await barcode.fill("7890000000017");
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  await expect(page.getByText("Arroz Demo 1 kg")).toBeVisible();
+  await expect(page.getByText("R$ 27,99", { exact: true })).toBeVisible();
+
+  await barcode.fill("7890000000024");
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  await expect(page.getByText("Leite Demo 1 L")).toBeVisible();
+  await expect(page.getByText("R$ 34,48", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Aumentar Arroz Demo 1 kg" }).click();
+  await expect(page.getByText("R$ 62,47", { exact: true })).toBeVisible();
+
+  const milkRow = page.locator('[data-barcode="7890000000024"]');
+  await milkRow.getByRole("button", { name: "Remover" }).click();
+  await expect(page.getByText("Leite Demo 1 L")).toHaveCount(0);
+  await expect(page.getByText("R$ 55,98", { exact: true })).toBeVisible();
+
+  const sessionBeforeRefresh = await page.evaluate(() =>
+    localStorage.getItem("varemi-go:demo-market:session"),
+  );
+  await page.reload();
+  await expect(page.getByText("Arroz Demo 1 kg")).toBeVisible();
+  await expect(page.getByText("R$ 55,98", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 itens")).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem("varemi-go:demo-market:session"),
+    ),
+  ).toBe(sessionBeforeRefresh);
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+});
+
+test("manual fallback reports unknown barcodes without corrupting the cart", async ({
+  page,
+}) => {
+  await page.goto("/#/store/demo-market");
+  const barcode = page.getByLabel("Código de barras");
+
+  await barcode.fill("7890000000994");
+  await page.getByRole("button", { name: "Adicionar" }).click();
+
+  await expect(page.getByRole("status")).toContainText(
+    "Produto não encontrado nesta loja",
+  );
+  await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+  await expect(page.getByText("R$ 0,00", { exact: true })).toBeVisible();
+});
+
+test("retrying remove after a committed response loss converges to item absent", async ({
+  page,
+}) => {
+  const barcodeValue = "7890000000024";
+  let dropNextDeleteResponse = true;
+  await page.route(`**/api/sessions/*/items/${barcodeValue}`, async (route) => {
+    if (route.request().method() !== "DELETE" || !dropNextDeleteResponse) {
+      await route.continue();
+      return;
+    }
+
+    dropNextDeleteResponse = false;
+    const response = await route.fetch();
+    expect(response.status()).toBe(200);
+    await route.abort("failed");
+  });
+
+  await page.goto("/#/store/demo-market");
+  const barcode = page.getByLabel("Código de barras");
+  await barcode.fill(barcodeValue);
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  const milkRow = page.locator(`[data-barcode="${barcodeValue}"]`);
+  await expect(milkRow).toBeVisible();
+  await expect(page.getByText("R$ 6,49", { exact: true })).toBeVisible();
+
+  await milkRow.getByRole("button", { name: "Remover" }).click();
+  await expect(milkRow).toBeVisible();
+
+  await milkRow.getByRole("button", { name: "Remover" }).click();
+  await expect(milkRow).toHaveCount(0);
+  await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+  await expect(page.getByText("R$ 0,00", { exact: true })).toBeVisible();
+});
+
+test("stale quantity from another tab conflicts and reconciles authoritative state", async ({
+  context,
+  page,
+}) => {
+  const barcodeValue = "7890000000017";
+  await page.goto("/#/store/demo-market");
+  const firstBarcode = page.getByLabel("Código de barras");
+  await firstBarcode.fill(barcodeValue);
+  await page.getByRole("button", { name: "Adicionar" }).click();
+
+  const firstRow = page.locator(`[data-barcode="${barcodeValue}"]`);
+  await expect(firstRow.locator(".quantity")).toHaveText("1");
+
+  const otherPage = await context.newPage();
+  await otherPage.goto("/#/store/demo-market");
+  const otherRow = otherPage.locator(`[data-barcode="${barcodeValue}"]`);
+  await expect(otherRow.locator(".quantity")).toHaveText("1");
+  const otherBarcode = otherPage.getByLabel("Código de barras");
+  await otherBarcode.fill(barcodeValue);
+  await otherPage.getByRole("button", { name: "Adicionar" }).click();
+  await expect(otherRow.locator(".quantity")).toHaveText("2");
+
+  await expect(firstRow.locator(".quantity")).toHaveText("1");
+  await firstRow
+    .getByRole("button", { name: "Aumentar Arroz Demo 1 kg" })
+    .click();
+
+  await expect(page.getByRole("status")).toContainText(
+    "O carrinho mudou em outra aba ou por um novo scan",
+  );
+  await expect(firstRow.locator(".quantity")).toHaveText("2");
+  await expect(page.getByText("R$ 55,98", { exact: true })).toBeVisible();
+
+  await firstRow
+    .getByRole("button", { name: "Aumentar Arroz Demo 1 kg" })
+    .click();
+  await expect(firstRow.locator(".quantity")).toHaveText("3");
+  await expect(page.getByText("R$ 83,97", { exact: true })).toBeVisible();
+});
+
+test("recovers an ended session during add without silently repeating the mutation", async ({
+  page,
+}) => {
+  const attempts = [];
+  let expireNextAdd = true;
+  await page.route("**/api/sessions/*/items", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    attempts.push(route.request().headers()["idempotency-key"]);
+    if (expireNextAdd) {
+      expireNextAdd = false;
+      await route.fulfill({
+        status: 410,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "CART_EXPIRED",
+          message: "Cart session has expired",
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/#/store/demo-market");
+  await expect(
+    page.getByRole("heading", { name: "Mercado Demo" }),
+  ).toBeVisible();
+  const sessionBefore = await page.evaluate(() =>
+    localStorage.getItem("varemi-go:demo-market:session"),
+  );
+
+  const barcode = page.getByLabel("Código de barras");
+  await barcode.fill("7890000000017");
+  await page.getByRole("button", { name: "Adicionar" }).click();
+
+  await expect(page.getByRole("status")).toContainText(
+    "Uma nova compra foi iniciada",
+  );
+  await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Tentar novamente" }),
+  ).toBeVisible();
+  expect(attempts).toHaveLength(1);
+  const sessionAfter = await page.evaluate(() =>
+    localStorage.getItem("varemi-go:demo-market:session"),
+  );
+  expect(sessionAfter).not.toBe(sessionBefore);
+
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect(page.getByText("Arroz Demo 1 kg")).toBeVisible();
+  expect(attempts).toHaveLength(2);
+  expect(attempts[1]).toBe(attempts[0]);
+});

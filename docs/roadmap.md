@@ -1,29 +1,40 @@
 # Roadmap
 
-## Agora — MVP mobile web
+## 1. Vertical slice demo — implementado
 
-- QR/URL da loja;
-- sessão anônima/pseudônima;
-- scanner + entrada manual;
-- consulta autoritativa de produto/preço via provider;
-- carrinho persistido e total durante a compra;
-- fallback operacional para checkout tradicional.
+- QR/URL da loja demo;
+- sessão anônima/pseudônima com credencial separada do resource ID;
+- scanner mobile web para EAN-13, EAN-8 e UPC-A, além de entrada manual;
+- consulta autoritativa de produto/preço via provider demo;
+- carrinho persistido, idempotência e total autoritativo durante a compra;
+- recuperação de sessão encerrada no browser e fallback operacional para checkout tradicional.
 
-## Depois de evidência de piloto
+Esta slice demonstra o núcleo scan → preço autoritativo → carrinho. Ela ainda não implementa finalização nem handoff de checkout.
 
-- integração real de catálogo/preço do primeiro varejista;
-- observabilidade e métricas do piloto;
-- refinamento de UX móvel e política explícita para mudanças de preço.
+## 2. Pilot readiness — ainda parte do MVP
 
-## Futuro, não implementado
+Antes do piloto, completar e validar:
 
-- handoff do carrinho para PDV/self-checkout;
-- pagamento e fiscal;
-- produtos pesáveis conforme integração real;
-- prevenção de perdas com auditoria/score;
+- finalização explícita do carrinho;
+- handoff seguro por QR/identificador;
+- recuperação autoritativa do carrinho pela estação de checkout;
+- integração real de catálogo/preço do primeiro varejista atrás do contrato de provider;
+- baseline do checkout atual;
+- instrumentação/observabilidade mínima para medir o piloto e investigar falhas;
+- fallback operacional testado.
+
+## 3. Piloto → evidência → expansão/refinamentos
+
+Executar o piloto controlado, medir os resultados contra o baseline e somente então decidir refinamentos/expansão com base em evidência.
+
+## Fora do MVP inicial
+
+- processamento próprio de pagamento;
+- emissão fiscal própria;
 - visão computacional;
-- analytics avançado/Varemi Insights;
 - IA/Varemi AI;
+- analytics avançado/Varemi Insights;
+- prevenção de perdas automatizada;
 - app nativo.
 
-Nenhuma dessas capacidades futuras deve ser apresentada como disponível hoje.
+Produtos pesáveis e validações operacionais entram conforme a integração real do piloto exigir, sem pressupor formato universal. Nenhuma capacidade pendente ou futura deve ser apresentada como disponível hoje.

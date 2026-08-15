@@ -1,18 +1,18 @@
-import globals from 'globals';
+import globals from "globals";
 
 export default [
   {
-    files: ['apps/web/**/*.js', 'e2e/**/*.js', '*.config.js'],
+    files: ["apps/web/**/*.js", "e2e/**/*.js", "*.config.js"],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: { ...globals.browser, ...globals.node },
     },
     rules: {
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      'no-undef': 'error',
-      'no-eval': 'error',
-      'no-implied-eval': 'error'
-    }
-  }
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "no-undef": "error",
+      "no-eval": "error",
+      "no-implied-eval": "error",
+    },
+  },
 ];
