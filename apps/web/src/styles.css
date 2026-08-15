@@ -43,8 +43,16 @@ html {
   min-width: 320px;
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(47, 128, 237, 0.1), transparent 34rem),
-    radial-gradient(circle at 88% 18%, rgba(16, 185, 129, 0.08), transparent 28rem),
+    radial-gradient(
+      circle at top left,
+      rgba(47, 128, 237, 0.1),
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 88% 18%,
+      rgba(16, 185, 129, 0.08),
+      transparent 28rem
+    ),
     #f4f8ff;
 }
 
@@ -596,7 +604,11 @@ input:disabled {
   min-height: 240px;
   overflow: hidden;
   background:
-    radial-gradient(circle at center, rgba(45, 116, 225, 0.18), transparent 55%),
+    radial-gradient(
+      circle at center,
+      rgba(45, 116, 225, 0.18),
+      transparent 55%
+    ),
     #050b16;
 }
 

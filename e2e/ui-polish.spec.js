@@ -50,10 +50,7 @@ test("camera unavailable keeps the manual barcode fallback usable", async ({
   await expect(page.getByRole("status")).toContainText(
     "Não foi possível iniciar a câmera neste navegador",
   );
-  await expect(page.getByRole("status")).toHaveAttribute(
-    "data-tone",
-    "error",
-  );
+  await expect(page.getByRole("status")).toHaveAttribute("data-tone", "error");
   await expect(cameraButton).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("#camera-panel")).toBeHidden();
   await expect(page.getByLabel("Código de barras")).toBeFocused();
