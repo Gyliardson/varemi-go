@@ -149,8 +149,12 @@ async function addBarcode(barcode, idempotencyKey) {
   }
 }
 
-/** @param {string} barcode @param {number} quantity */
-async function updateQuantity(barcode, quantity) {
+/**
+ * @param {string} barcode
+ * @param {number} quantity
+ * @param {number} expectedQuantity
+ */
+async function updateQuantity(barcode, quantity, expectedQuantity) {
   const credentials = sessionCredentials;
   if (!credentials || sessionState !== "active") return;
   setBusy(true);
@@ -159,12 +163,14 @@ async function updateQuantity(barcode, quantity) {
       `/api/sessions/${credentials.sessionId}/items/${encodeURIComponent(barcode)}`,
       {
         method: "PATCH",
-        body: { quantity },
+        body: { quantity, expectedQuantity },
       },
     );
     renderCart(cart);
   } catch (error) {
-    if (isTerminalSessionError(error)) {
+    if (error instanceof ApiError && error.code === "QUANTITY_CONFLICT") {
+      await reconcileQuantityConflict(credentials.sessionId);
+    } else if (isTerminalSessionError(error)) {
       await recoverEndedSession(
         "Sua sessão anterior foi encerrada. Uma nova compra vazia foi iniciada.",
         false,
@@ -174,6 +180,25 @@ async function updateQuantity(barcode, quantity) {
     }
   } finally {
     setBusy(false);
+  }
+}
+
+/** @param {string} sessionId */
+async function reconcileQuantityConflict(sessionId) {
+  try {
+    const cart = await apiRequest(`/api/sessions/${sessionId}`);
+    renderCart(cart);
+    elements.feedback.textContent =
+      "O carrinho mudou em outra aba ou por um novo scan. Estado atualizado; confirme a quantidade novamente.";
+  } catch (error) {
+    if (isTerminalSessionError(error)) {
+      await recoverEndedSession(
+        "Sua sessão anterior foi encerrada. Uma nova compra vazia foi iniciada.",
+        false,
+      );
+    } else {
+      showError(error, "Não foi possível recuperar o estado atual do carrinho.");
+    }
   }
 }
 
@@ -265,11 +290,21 @@ function renderCart(cart) {
     decrement.disabled = item.quantity <= 1;
     decrement.addEventListener(
       "click",
-      () => void updateQuantity(item.barcode, item.quantity - 1),
+      () =>
+        void updateQuantity(
+          item.barcode,
+          item.quantity - 1,
+          item.quantity,
+        ),
     );
     increment.addEventListener(
       "click",
-      () => void updateQuantity(item.barcode, item.quantity + 1),
+      () =>
+        void updateQuantity(
+          item.barcode,
+          item.quantity + 1,
+          item.quantity,
+        ),
     );
     remove.addEventListener("click", () => void removeItem(item.barcode));
     elements.cartItems.append(row);

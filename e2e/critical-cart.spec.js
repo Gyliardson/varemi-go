@@ -63,6 +63,80 @@ test("manual fallback reports unknown barcodes without corrupting the cart", asy
   await expect(page.getByText("R$ 0,00", { exact: true })).toBeVisible();
 });
 
+test("retrying remove after a committed response loss converges to item absent", async ({
+  page,
+}) => {
+  const barcodeValue = "7890000000024";
+  let dropNextDeleteResponse = true;
+  await page.route(`**/api/sessions/*/items/${barcodeValue}`, async (route) => {
+    if (route.request().method() !== "DELETE" || !dropNextDeleteResponse) {
+      await route.continue();
+      return;
+    }
+
+    dropNextDeleteResponse = false;
+    const response = await route.fetch();
+    expect(response.status()).toBe(200);
+    await route.abort("failed");
+  });
+
+  await page.goto("/#/store/demo-market");
+  const barcode = page.getByLabel("Código de barras");
+  await barcode.fill(barcodeValue);
+  await page.getByRole("button", { name: "Adicionar" }).click();
+  const milkRow = page.locator(`[data-barcode="${barcodeValue}"]`);
+  await expect(milkRow).toBeVisible();
+  await expect(page.getByText("R$ 6,49", { exact: true })).toBeVisible();
+
+  await milkRow.getByRole("button", { name: "Remover" }).click();
+  await expect(milkRow).toBeVisible();
+
+  await milkRow.getByRole("button", { name: "Remover" }).click();
+  await expect(milkRow).toHaveCount(0);
+  await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+  await expect(page.getByText("R$ 0,00", { exact: true })).toBeVisible();
+});
+
+test("stale quantity from another tab conflicts and reconciles authoritative state", async ({
+  context,
+  page,
+}) => {
+  const barcodeValue = "7890000000017";
+  await page.goto("/#/store/demo-market");
+  const firstBarcode = page.getByLabel("Código de barras");
+  await firstBarcode.fill(barcodeValue);
+  await page.getByRole("button", { name: "Adicionar" }).click();
+
+  const firstRow = page.locator(`[data-barcode="${barcodeValue}"]`);
+  await expect(firstRow.locator(".quantity")).toHaveText("1");
+
+  const otherPage = await context.newPage();
+  await otherPage.goto("/#/store/demo-market");
+  const otherRow = otherPage.locator(`[data-barcode="${barcodeValue}"]`);
+  await expect(otherRow.locator(".quantity")).toHaveText("1");
+  const otherBarcode = otherPage.getByLabel("Código de barras");
+  await otherBarcode.fill(barcodeValue);
+  await otherPage.getByRole("button", { name: "Adicionar" }).click();
+  await expect(otherRow.locator(".quantity")).toHaveText("2");
+
+  await expect(firstRow.locator(".quantity")).toHaveText("1");
+  await firstRow
+    .getByRole("button", { name: "Aumentar Arroz Demo 1 kg" })
+    .click();
+
+  await expect(page.getByRole("status")).toContainText(
+    "O carrinho mudou em outra aba ou por um novo scan",
+  );
+  await expect(firstRow.locator(".quantity")).toHaveText("2");
+  await expect(page.getByText("R$ 55,98", { exact: true })).toBeVisible();
+
+  await firstRow
+    .getByRole("button", { name: "Aumentar Arroz Demo 1 kg" })
+    .click();
+  await expect(firstRow.locator(".quantity")).toHaveText("3");
+  await expect(page.getByText("R$ 83,97", { exact: true })).toBeVisible();
+});
+
 test("recovers an ended session during add without silently repeating the mutation", async ({
   page,
 }) => {

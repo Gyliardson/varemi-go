@@ -18,6 +18,7 @@ from varemi_go.persistence import (
     CartExpiredError,
     IdempotencyConflictError,
     ItemNotFoundError,
+    QuantityConflictError,
     SessionNotFoundError,
     SessionUnauthorizedError,
     SqliteCartRepository,
@@ -77,6 +78,7 @@ class AddItemRequest(ApiModel):
 
 class QuantityRequest(ApiModel):
     quantity: int = Field(ge=1, le=999)
+    expected_quantity: int = Field(alias="expectedQuantity", ge=1, le=999)
 
 
 class HealthResponse(ApiModel):
@@ -235,6 +237,7 @@ def create_app(
         responses={
             401: {"model": ErrorBody},
             404: {"model": ErrorBody},
+            409: {"model": ErrorBody},
             410: {"model": ErrorBody},
             422: {"model": ErrorBody},
         },
@@ -247,11 +250,23 @@ def create_app(
     ) -> CartResponse:
         try:
             normalized = normalize_gtin(barcode)
-            cart = context.repository.set_quantity(session_id, token, normalized, request.quantity)
+            cart = context.repository.set_quantity(
+                session_id,
+                token,
+                normalized,
+                request.quantity,
+                request.expected_quantity,
+            )
         except InvalidBarcodeError as error:
             raise _http_error(422, "INVALID_BARCODE", str(error)) from error
         except ItemNotFoundError as error:
             raise _http_error(404, "ITEM_NOT_FOUND", "Cart item was not found") from error
+        except QuantityConflictError as error:
+            raise _http_error(
+                409,
+                "QUANTITY_CONFLICT",
+                "Cart item quantity changed; recover authoritative cart state",
+            ) from error
         except (SessionNotFoundError, SessionUnauthorizedError, CartExpiredError) as error:
             raise _session_http_error(error) from error
         return _cart_response(cart)
@@ -276,8 +291,6 @@ def create_app(
             cart = context.repository.remove_item(session_id, token, normalized)
         except InvalidBarcodeError as error:
             raise _http_error(422, "INVALID_BARCODE", str(error)) from error
-        except ItemNotFoundError as error:
-            raise _http_error(404, "ITEM_NOT_FOUND", "Cart item was not found") from error
         except (SessionNotFoundError, SessionUnauthorizedError, CartExpiredError) as error:
             raise _session_http_error(error) from error
         return _cart_response(cart)

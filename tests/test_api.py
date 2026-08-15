@@ -56,16 +56,69 @@ def test_full_cart_api_flow_is_authoritative_and_recoverable(client: TestClient)
     )
     assert second.json()["totalCents"] == 3448
 
-    quantity = client.patch(f"/api/sessions/{session_id}/items/7890000000017", json={"quantity": 2})
+    quantity = client.patch(
+        f"/api/sessions/{session_id}/items/7890000000017",
+        json={"quantity": 2, "expectedQuantity": 1},
+    )
     assert quantity.json()["totalCents"] == 6247
 
     removed = client.delete(f"/api/sessions/{session_id}/items/7890000000024")
+    assert removed.status_code == 200
     assert removed.json()["totalCents"] == 5598
+
+    remove_retry = client.delete(f"/api/sessions/{session_id}/items/7890000000024")
+    assert remove_retry.status_code == 200
+    assert remove_retry.json()["totalCents"] == 5598
+    assert all(item["barcode"] != "7890000000024" for item in remove_retry.json()["items"])
 
     recovered = client.get(f"/api/sessions/{session_id}")
     assert recovered.status_code == 200
     assert recovered.json()["totalCents"] == 5598
     assert recovered.json()["items"][0]["priceSource"] == "demo-catalog:v1"
+
+
+def test_quantity_compare_and_set_rejects_stale_snapshot(client: TestClient) -> None:
+    session_id = _create_session(client)
+    barcode = "7890000000017"
+
+    initial = client.post(
+        f"/api/sessions/{session_id}/items",
+        headers={"Idempotency-Key": "api-quantity-0001"},
+        json={"barcode": barcode},
+    )
+    assert initial.status_code == 200
+    assert initial.json()["items"][0]["quantity"] == 1
+
+    concurrent_scan = client.post(
+        f"/api/sessions/{session_id}/items",
+        headers={"Idempotency-Key": "api-quantity-0002"},
+        json={"barcode": barcode},
+    )
+    assert concurrent_scan.status_code == 200
+    assert concurrent_scan.json()["items"][0]["quantity"] == 2
+
+    stale_patch = client.patch(
+        f"/api/sessions/{session_id}/items/{barcode}",
+        json={"quantity": 2, "expectedQuantity": 1},
+    )
+    assert stale_patch.status_code == 409
+    assert stale_patch.json() == {
+        "code": "QUANTITY_CONFLICT",
+        "message": "Cart item quantity changed; recover authoritative cart state",
+    }
+
+    authoritative = client.get(f"/api/sessions/{session_id}")
+    assert authoritative.status_code == 200
+    assert authoritative.json()["items"][0]["quantity"] == 2
+    assert authoritative.json()["totalCents"] == 2 * 2799
+
+    sequential = client.patch(
+        f"/api/sessions/{session_id}/items/{barcode}",
+        json={"quantity": 3, "expectedQuantity": 2},
+    )
+    assert sequential.status_code == 200
+    assert sequential.json()["items"][0]["quantity"] == 3
+    assert sequential.json()["totalCents"] == 3 * 2799
 
 
 def test_api_rejects_client_errors_and_unknown_catalog_entries(client: TestClient) -> None:
@@ -215,7 +268,14 @@ def test_error_wire_contract_and_openapi_match(
     assert conflict.json()["code"] == "IDEMPOTENCY_KEY_REUSED"
 
     openapi = client.get("/openapi.json").json()
-    responses = openapi["paths"]["/api/sessions/{session_id}/items"]["post"]["responses"]
+    add_responses = openapi["paths"]["/api/sessions/{session_id}/items"]["post"]["responses"]
     for status_code in ("401", "404", "409", "410", "422"):
-        schema = responses[status_code]["content"]["application/json"]["schema"]
+        schema = add_responses[status_code]["content"]["application/json"]["schema"]
+        assert schema["$ref"] == "#/components/schemas/ErrorBody"
+
+    patch_responses = openapi["paths"]["/api/sessions/{session_id}/items/{barcode}"]["patch"][
+        "responses"
+    ]
+    for status_code in ("401", "404", "409", "410", "422"):
+        schema = patch_responses[status_code]["content"]["application/json"]["schema"]
         assert schema["$ref"] == "#/components/schemas/ErrorBody"

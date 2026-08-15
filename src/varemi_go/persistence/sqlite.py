@@ -37,6 +37,10 @@ class IdempotencyConflictError(RuntimeError):
     pass
 
 
+class QuantityConflictError(RuntimeError):
+    pass
+
+
 class SqliteCartRepository:
     def __init__(self, database_path: Path, *, session_ttl_seconds: int = 86_400) -> None:
         self._database_path = database_path
@@ -69,7 +73,7 @@ class SqliteCartRepository:
         return _store_from_row(row)
 
     def create_session(self, store: Store, *, now: datetime | None = None) -> tuple[Cart, str]:
-        created_at = now or utc_now()
+        created_at = now if now is not None else utc_now()
         token = secrets.token_urlsafe(32)
         session_id = str(uuid4())
         expires_at = created_at + timedelta(seconds=self._session_ttl_seconds)
@@ -99,8 +103,8 @@ class SqliteCartRepository:
         *,
         now: datetime | None = None,
     ) -> Cart:
-        current_time = now or utc_now()
         with self._transaction() as connection:
+            current_time = now if now is not None else utc_now()
             self._authorize(connection, session_id, token)
             self._expire_if_needed(connection, session_id, current_time)
             cart = self._load_cart(connection, session_id)
@@ -117,8 +121,8 @@ class SqliteCartRepository:
         request_hash: str,
         now: datetime | None = None,
     ) -> Cart | None:
-        current_time = now or utc_now()
         with self._transaction() as connection:
+            current_time = now if now is not None else utc_now()
             self._authorize(connection, session_id, token)
             self._require_active(connection, session_id, current_time)
             existing_request = connection.execute(
@@ -146,8 +150,8 @@ class SqliteCartRepository:
         request_hash: str,
         now: datetime | None = None,
     ) -> Cart:
-        current_time = now or utc_now()
         with self._transaction() as connection:
+            current_time = now if now is not None else utc_now()
             self._authorize(connection, session_id, token)
             self._require_active(connection, session_id, current_time)
             existing_request = connection.execute(
@@ -240,22 +244,35 @@ class SqliteCartRepository:
         token: str,
         barcode: str,
         quantity: int,
+        expected_quantity: int,
         *,
         now: datetime | None = None,
     ) -> Cart:
-        current_time = now or utc_now()
         with self._transaction() as connection:
+            current_time = now if now is not None else utc_now()
             self._authorize(connection, session_id, token)
             self._require_active(connection, session_id, current_time)
             cursor = connection.execute(
                 """
                 UPDATE cart_items SET quantity = ?, updated_at = ?
-                WHERE session_id = ? AND barcode = ?
+                WHERE session_id = ? AND barcode = ? AND quantity = ?
                 """,
-                (quantity, _serialize_datetime(current_time), session_id, barcode),
+                (
+                    quantity,
+                    _serialize_datetime(current_time),
+                    session_id,
+                    barcode,
+                    expected_quantity,
+                ),
             )
             if cursor.rowcount == 0:
-                raise ItemNotFoundError(barcode)
+                existing_item = connection.execute(
+                    "SELECT quantity FROM cart_items WHERE session_id = ? AND barcode = ?",
+                    (session_id, barcode),
+                ).fetchone()
+                if existing_item is None:
+                    raise ItemNotFoundError(barcode)
+                raise QuantityConflictError(barcode)
             connection.execute(
                 "UPDATE cart_sessions SET updated_at = ? WHERE id = ?",
                 (_serialize_datetime(current_time), session_id),
@@ -270,20 +287,19 @@ class SqliteCartRepository:
         *,
         now: datetime | None = None,
     ) -> Cart:
-        current_time = now or utc_now()
         with self._transaction() as connection:
+            current_time = now if now is not None else utc_now()
             self._authorize(connection, session_id, token)
             self._require_active(connection, session_id, current_time)
             cursor = connection.execute(
                 "DELETE FROM cart_items WHERE session_id = ? AND barcode = ?",
                 (session_id, barcode),
             )
-            if cursor.rowcount == 0:
-                raise ItemNotFoundError(barcode)
-            connection.execute(
-                "UPDATE cart_sessions SET updated_at = ? WHERE id = ?",
-                (_serialize_datetime(current_time), session_id),
-            )
+            if cursor.rowcount > 0:
+                connection.execute(
+                    "UPDATE cart_sessions SET updated_at = ? WHERE id = ?",
+                    (_serialize_datetime(current_time), session_id),
+                )
             return self._load_cart(connection, session_id)
 
     @contextmanager
