@@ -113,11 +113,71 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npm run e2e
-      - name: Commit verified fixes and remove temporary workflows
+      - name: Stage verified commit object and remove temporary workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           git rm .github/workflows/lockgen.yml .github/workflows/apply-fixes-v2.yml .github/workflows/apply-fixes-v3.yml .github/workflows/apply-fixes-v4.yml .github/workflows/apply-fixes-v5.yml .github/workflows/apply-fixes-v6.yml
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'fix(mvp): resolve verified PR blockers'
-          git push origin HEAD:feat/first-vertical-slice
+          python - <<'PY'
+          import base64
+          import json
+          import os
+          import subprocess
+          import urllib.request
+          from pathlib import Path
+
+          repo = os.environ['GH_REPO']
+          token = os.environ['GH_TOKEN']
+          api = f'https://api.github.com/repos/{repo}'
+          parent = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          base_tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+
+          def request(path, payload):
+              data = json.dumps(payload).encode()
+              req = urllib.request.Request(
+                  api + path,
+                  data=data,
+                  method='POST',
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Accept': 'application/vnd.github+json',
+                      'X-GitHub-Api-Version': '2022-11-28',
+                      'Content-Type': 'application/json',
+                  },
+              )
+              with urllib.request.urlopen(req) as response:
+                  return json.load(response)
+
+          entries = []
+          changed = subprocess.check_output(
+              ['git', 'diff', '--cached', '--name-status', '-z']
+          ).decode().split('\0')
+          i = 0
+          while i < len(changed) and changed[i]:
+              status = changed[i]
+              path = changed[i + 1]
+              i += 2
+              if status.startswith('D'):
+                  entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': None})
+                  continue
+              mode = subprocess.check_output(
+                  ['git', 'ls-files', '-s', '--', path], text=True
+              ).split()[0]
+              content = base64.b64encode(Path(path).read_bytes()).decode()
+              blob = request('/git/blobs', {'content': content, 'encoding': 'base64'})
+              entries.append({'path': path, 'mode': mode, 'type': 'blob', 'sha': blob['sha']})
+
+          tree = request('/git/trees', {'base_tree': base_tree, 'tree': entries})
+          commit = request(
+              '/git/commits',
+              {
+                  'message': 'fix(mvp): resolve verified PR blockers',
+                  'tree': tree['sha'],
+                  'parents': [parent],
+              },
+          )
+          print(f"FINAL_COMMIT_SHA={commit['sha']}")
+          print(f"FINAL_TREE_SHA={tree['sha']}")
+          PY
