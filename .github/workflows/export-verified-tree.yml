@@ -1,0 +1,107 @@
+name: export-verified-tree
+
+on:
+  push:
+    branches: [feat/first-vertical-slice]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: feat/first-vertical-slice
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked formatters
+        run: |
+          python -m pip install -r requirements.lock
+          npm ci
+      - name: Materialize verified tree
+        run: |
+          awk '/^          cat > \/tmp\/apply_fixes.py/{flag=1; next} /^          PY$/{flag=0} flag{sub(/^          /, ""); print}' .github/workflows/lockgen.yml > /tmp/apply_fixes.py
+          python - <<'PY'
+          from pathlib import Path
+
+          script = Path('/tmp/apply_fixes.py')
+          text = script.read_text(encoding='utf-8')
+          for path, variable in (
+              ('tests/test_api.py', 'api_tests'),
+              ('tests/test_persistence.py', 'concurrency_test'),
+              ('e2e/critical-cart.spec.js', 'e2e_test'),
+          ):
+              bad = (
+                  f'Path("{path}").write_text(\\n'
+                  f'              Path("{path}").read_text(encoding="utf-8") + {variable},\\n'
+                  '              encoding="utf-8",\\n'
+                  '          )'
+              )
+              good = (
+                  f'Path("{path}").write_text(\n'
+                  f'              Path("{path}").read_text(encoding="utf-8") + {variable},\n'
+                  '              encoding="utf-8",\n'
+                  '          )'
+              )
+              if bad not in text:
+                  raise SystemExit(f'missing encoded write_text block: {path}')
+              text = text.replace(bad, good)
+          script.write_text(text, encoding='utf-8')
+          PY
+          python -m py_compile /tmp/apply_fixes.py
+          python /tmp/apply_fixes.py
+          sed -i 's/--no-deps --no-build-isolation -e \./--no-deps --no-build-isolation ./g' .github/workflows/ci.yml .github/workflows/e2e.yml docs/setup.md
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/src/app.js')
+          text = path.read_text(encoding='utf-8')
+          functions = ('addBarcode(barcode, idempotencyKey)', 'updateQuantity(barcode, quantity)', 'removeItem(barcode)')
+          for signature in functions:
+              start = text.index(f'async function {signature} {{')
+              end = text.find('\nasync function ', start + 1)
+              if end == -1:
+                  end = len(text)
+              segment = text[start:end]
+              old_guard = f'async function {signature} {{\n  if (!canMutateSession()) return;'
+              new_guard = f'async function {signature} {{\n  const credentials = sessionCredentials;\n  if (!credentials || sessionState !== "active") return;'
+              if old_guard not in segment:
+                  raise SystemExit(f'missing mutation guard: {signature}')
+              segment = segment.replace(old_guard, new_guard, 1)
+              if '${sessionCredentials.sessionId}' not in segment:
+                  raise SystemExit(f'missing scoped credential use: {signature}')
+              segment = segment.replace('${sessionCredentials.sessionId}', '${credentials.sessionId}', 1)
+              text = text[:start] + segment + text[end:]
+          helper = '''function canMutateSession() {\n  return sessionCredentials !== null && sessionState === "active";\n}\n\n'''
+          if helper not in text:
+              raise SystemExit('missing canMutateSession helper')
+          path.write_text(text.replace(helper, '', 1), encoding='utf-8')
+          PY
+          python -m ruff check --fix tests/test_api.py tests/test_persistence.py
+          python -m ruff format src/varemi_go/api/app.py src/varemi_go/persistence/sqlite.py tests/test_api.py tests/test_persistence.py
+          npx prettier --write apps/web/src/app.js apps/web/src/scanner.js apps/web/src/lib/scanner-utils.js apps/web/src/lib/scanner-utils.test.js e2e/critical-cart.spec.js
+          git rm .github/workflows/lockgen.yml .github/workflows/apply-fixes-v2.yml .github/workflows/apply-fixes-v3.yml .github/workflows/apply-fixes-v4.yml .github/workflows/apply-fixes-v5.yml .github/workflows/apply-fixes-v6.yml .github/workflows/export-verified-tree.yml
+          mkdir -p /tmp/final-tree/files
+          git diff --name-only --diff-filter=ACMRT HEAD > /tmp/final-tree/files.txt
+          git diff --name-only --diff-filter=D HEAD > /tmp/final-tree/deletions.txt
+          while IFS= read -r path; do
+            test -z "$path" && continue
+            mkdir -p "/tmp/final-tree/files/$(dirname "$path")"
+            cp "$path" "/tmp/final-tree/files/$path"
+          done < /tmp/final-tree/files.txt
+          tar -C /tmp -czf /tmp/verified-tree.tgz final-tree
+      - name: Upload verified tree
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-tree
+          path: /tmp/verified-tree.tgz
+          if-no-files-found: error
+          retention-days: 1
