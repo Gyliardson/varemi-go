@@ -290,21 +290,11 @@ function renderCart(cart) {
     decrement.disabled = item.quantity <= 1;
     decrement.addEventListener(
       "click",
-      () =>
-        void updateQuantity(
-          item.barcode,
-          item.quantity - 1,
-          item.quantity,
-        ),
+      () => void updateQuantity(item.barcode, item.quantity - 1, item.quantity),
     );
     increment.addEventListener(
       "click",
-      () =>
-        void updateQuantity(
-          item.barcode,
-          item.quantity + 1,
-          item.quantity,
-        ),
+      () => void updateQuantity(item.barcode, item.quantity + 1, item.quantity),
     );
     remove.addEventListener("click", () => void removeItem(item.barcode));
     elements.cartItems.append(row);
