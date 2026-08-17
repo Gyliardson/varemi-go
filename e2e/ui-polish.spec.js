@@ -39,6 +39,16 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
     "online",
   );
   await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+
+  const emptyCart = page.locator("#empty-cart");
+  const emptyCartImage = emptyCart.locator('img[src="/assets/cart-empty.png"]');
+  const cartIcon = page.locator('#item-count img[src="/assets/cart-icon.png"]');
+  await expect(emptyCartImage).toBeVisible();
+  await expect(emptyCartImage).toHaveAttribute("alt", "");
+  await expect(cartIcon).toBeVisible();
+  await expect(cartIcon).toHaveAttribute("alt", "");
+  await expect(page.locator("#item-count-value")).toHaveText("0 itens");
+
   await expect(
     page.getByText(
       "Este total é um acompanhamento. No MVP atual, os produtos ainda são registrados normalmente no caixa.",
@@ -57,6 +67,8 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
   await expect(page.locator('[data-barcode="7890000000017"]')).toHaveClass(
     /cart-item--fresh/,
   );
+  await expect(emptyCart).toBeHidden();
+  await expect(page.locator("#item-count-value")).toHaveText("1 item");
 });
 
 test("polish keeps the verified accessible text colors", async ({ page }) => {
