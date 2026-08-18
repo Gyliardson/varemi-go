@@ -136,12 +136,12 @@ test("mobile card hierarchy stays aligned and compact at 320px", async ({
   expect(copyGap).toBeLessThanOrEqual(12);
 
   const centerX = (box) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
-  expect(Math.abs(centerX(emptyImageBox) - centerX(emptyTitleBox))).toBeLessThanOrEqual(
-    2,
-  );
-  expect(Math.abs(centerX(emptyTitleBox) - centerX(emptyCopyBox))).toBeLessThanOrEqual(
-    2,
-  );
+  expect(
+    Math.abs(centerX(emptyImageBox) - centerX(emptyTitleBox)),
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(centerX(emptyTitleBox) - centerX(emptyCopyBox)),
+  ).toBeLessThanOrEqual(2);
 });
 
 test("polish keeps the verified accessible text colors", async ({ page }) => {
