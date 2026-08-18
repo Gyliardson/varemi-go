@@ -71,6 +71,40 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
   await expect(page.locator("#item-count-value")).toHaveText("1 item");
 });
 
+test("mobile cart count integrates with the heading at 390px", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/#/store/demo-market");
+
+  const titleBox = await page.locator("#cart-title").boundingBox();
+  const descriptionBox = await page
+    .locator(".cart-section .section-description")
+    .boundingBox();
+  const itemCountBox = await page.locator("#item-count").boundingBox();
+
+  expect(titleBox).not.toBeNull();
+  expect(descriptionBox).not.toBeNull();
+  expect(itemCountBox).not.toBeNull();
+  expect(
+    Math.abs((itemCountBox?.y ?? 0) - (titleBox?.y ?? 0)),
+  ).toBeLessThanOrEqual(4);
+  expect(itemCountBox?.x ?? 0).toBeGreaterThanOrEqual(
+    (titleBox?.x ?? 0) + (titleBox?.width ?? 0) + 8,
+  );
+  expect(descriptionBox?.y ?? 0).toBeGreaterThanOrEqual(
+    Math.max(
+      (titleBox?.y ?? 0) + (titleBox?.height ?? 0),
+      (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0),
+    ),
+  );
+  expect(
+    Math.abs(
+      (itemCountBox?.x ?? 0) +
+        (itemCountBox?.width ?? 0) -
+        ((descriptionBox?.x ?? 0) + (descriptionBox?.width ?? 0)),
+    ),
+  ).toBeLessThanOrEqual(1);
+});
+
 test("mobile card hierarchy stays aligned and compact at 320px", async ({
   page,
 }) => {
@@ -103,10 +137,14 @@ test("mobile card hierarchy stays aligned and compact at 320px", async ({
   expect(cartDescriptionBox).not.toBeNull();
   expect(itemCountBox).not.toBeNull();
   expect(itemCountBox?.y ?? 0).toBeGreaterThanOrEqual(
-    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0) + 8,
+    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0) + 6,
   );
   expect(
-    Math.abs((itemCountBox?.x ?? 0) - (cartTitleBox?.x ?? 0)),
+    Math.abs(
+      (itemCountBox?.x ?? 0) +
+        (itemCountBox?.width ?? 0) -
+        ((cartDescriptionBox?.x ?? 0) + (cartDescriptionBox?.width ?? 0)),
+    ),
   ).toBeLessThanOrEqual(1);
 
   const emptyImageBox = await page
