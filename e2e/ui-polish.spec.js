@@ -142,6 +142,9 @@ test("mobile card hierarchy stays aligned and compact at 320px", async ({
   expect(
     Math.abs(centerX(emptyTitleBox) - centerX(emptyCopyBox)),
   ).toBeLessThanOrEqual(2);
+
+  const screenshot = await page.screenshot({ fullPage: true });
+  console.log(`VAREMI_SCREENSHOT_BASE64:${screenshot.toString("base64")}`);
 });
 
 test("polish keeps the verified accessible text colors", async ({ page }) => {
