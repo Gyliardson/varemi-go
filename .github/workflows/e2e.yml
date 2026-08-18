@@ -32,4 +32,18 @@ jobs:
       - run: python -m pip check
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run e2e
+      - name: Run E2E and capture visual review output
+        run: |
+          set -o pipefail
+          npm run e2e | tee /tmp/varemi-e2e.log
+      - name: Decode mobile visual review screenshot
+        run: |
+          sed -n 's/^.*VAREMI_SCREENSHOT_BASE64://p' /tmp/varemi-e2e.log | tail -n 1 | base64 --decode > /tmp/empty-cart-320.png
+          test -s /tmp/empty-cart-320.png
+      - name: Upload mobile visual review screenshot
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-review-empty-cart-320
+          path: /tmp/empty-cart-320.png
+          if-no-files-found: error
+          retention-days: 1
