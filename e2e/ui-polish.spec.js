@@ -71,6 +71,41 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
   await expect(page.locator("#item-count-value")).toHaveText("1 item");
 });
 
+test("mobile section headings keep step markers aligned at 320px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/#/store/demo-market");
+
+  for (const cardSelector of [".scan-card", ".cart-section"]) {
+    const step = page.locator(`${cardSelector} .step`);
+    const title = page.locator(`${cardSelector} h2`);
+    const stepBox = await step.boundingBox();
+    const titleBox = await title.boundingBox();
+    expect(stepBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    expect(
+      Math.abs((stepBox?.y ?? 0) - (titleBox?.y ?? 0)),
+    ).toBeLessThanOrEqual(1);
+  }
+
+  const cartTitleBox = await page.locator("#cart-title").boundingBox();
+  const cartCopyBox = await page
+    .locator(".cart-section .section-heading-copy")
+    .boundingBox();
+  const itemCountBox = await page.locator("#item-count").boundingBox();
+  expect(cartTitleBox).not.toBeNull();
+  expect(cartCopyBox).not.toBeNull();
+  expect(itemCountBox).not.toBeNull();
+  expect(cartTitleBox?.height ?? 100).toBeLessThan(30);
+  expect(itemCountBox?.y ?? 0).toBeGreaterThanOrEqual(
+    (cartCopyBox?.y ?? 0) + (cartCopyBox?.height ?? 0) + 8,
+  );
+  expect(
+    Math.abs((itemCountBox?.x ?? 0) - (cartTitleBox?.x ?? 0)),
+  ).toBeLessThanOrEqual(1);
+});
+
 test("polish keeps the verified accessible text colors", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 844 });
   await page.goto("/#/store/demo-market");
