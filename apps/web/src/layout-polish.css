@@ -114,15 +114,16 @@
 @media (max-width: 350px) {
   .cart-heading-text {
     grid-template-areas:
-      "title"
-      "description"
-      "count";
-    grid-template-columns: minmax(0, 1fr);
+      "title title"
+      "description count";
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 4px;
   }
 
   .cart-section .item-count {
-    justify-self: end;
-    margin-top: 7px;
+    align-self: center;
+    margin: 0;
   }
 }
 
