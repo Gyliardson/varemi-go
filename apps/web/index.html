@@ -13,6 +13,7 @@
     />
     <title>Varemi Go</title>
     <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="/src/layout-polish.css" />
   </head>
   <body>
     <main id="app-shell" class="shell" aria-busy="false">
@@ -37,7 +38,7 @@
         <div class="section-heading">
           <div class="section-heading-copy">
             <span class="step" aria-hidden="true">1</span>
-            <div>
+            <div class="section-heading-text">
               <h2 id="scan-title">Adicionar produto</h2>
               <p class="section-description">
                 Escaneie ou digite o código de barras.
@@ -158,24 +159,24 @@
         <div class="section-heading">
           <div class="section-heading-copy">
             <span class="step" aria-hidden="true">2</span>
-            <div>
+            <div class="section-heading-text cart-heading-text">
               <h2 id="cart-title">Seu acompanhamento</h2>
               <p class="section-description">
                 Itens e total atualizados durante a compra.
               </p>
+              <span id="item-count" class="item-count">
+                <img
+                  class="cart-icon"
+                  src="/assets/cart-icon.png"
+                  alt=""
+                  width="64"
+                  height="64"
+                  aria-hidden="true"
+                />
+                <span id="item-count-value">0 itens</span>
+              </span>
             </div>
           </div>
-          <span id="item-count" class="item-count">
-            <img
-              class="cart-icon"
-              src="/assets/cart-icon.png"
-              alt=""
-              width="64"
-              height="64"
-              aria-hidden="true"
-            />
-            <span id="item-count-value">0 itens</span>
-          </span>
         </div>
 
         <div id="empty-cart" class="empty-cart">
