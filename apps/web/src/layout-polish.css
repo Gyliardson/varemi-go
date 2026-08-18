@@ -59,6 +59,10 @@
     gap: 10px;
   }
 
+  .cart-heading-text .section-heading-copy {
+    display: contents;
+  }
+
   .section-description {
     max-width: none;
   }
