@@ -71,7 +71,9 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
   await expect(page.locator("#item-count-value")).toHaveText("1 item");
 });
 
-test("mobile cart count integrates with the heading at 390px", async ({ page }) => {
+test("mobile cart count integrates with the heading at 390px", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/#/store/demo-market");
 
@@ -128,22 +130,32 @@ test("mobile card hierarchy stays aligned and compact at 320px", async ({
     ).toBeLessThanOrEqual(1);
   }
 
+  const cartHeadingBox = await page.locator(".cart-heading-text").boundingBox();
   const cartTitleBox = await page.locator("#cart-title").boundingBox();
   const cartDescriptionBox = await page
     .locator(".cart-section .section-description")
     .boundingBox();
   const itemCountBox = await page.locator("#item-count").boundingBox();
+  expect(cartHeadingBox).not.toBeNull();
   expect(cartTitleBox).not.toBeNull();
   expect(cartDescriptionBox).not.toBeNull();
   expect(itemCountBox).not.toBeNull();
+  expect(itemCountBox?.x ?? 0).toBeGreaterThanOrEqual(
+    (cartDescriptionBox?.x ?? 0) + (cartDescriptionBox?.width ?? 0) + 8,
+  );
   expect(itemCountBox?.y ?? 0).toBeGreaterThanOrEqual(
-    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0) + 6,
+    cartDescriptionBox?.y ?? 0,
+  );
+  expect(
+    (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0),
+  ).toBeLessThanOrEqual(
+    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0) + 1,
   );
   expect(
     Math.abs(
       (itemCountBox?.x ?? 0) +
         (itemCountBox?.width ?? 0) -
-        ((cartDescriptionBox?.x ?? 0) + (cartDescriptionBox?.width ?? 0)),
+        ((cartHeadingBox?.x ?? 0) + (cartHeadingBox?.width ?? 0)),
     ),
   ).toBeLessThanOrEqual(1);
 
@@ -160,8 +172,11 @@ test("mobile card hierarchy stays aligned and compact at 320px", async ({
   expect(emptyTitleBox).not.toBeNull();
   expect(emptyCopyBox).not.toBeNull();
 
-  const countBottom = (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0);
-  const imageGap = (emptyImageBox?.y ?? 0) - countBottom;
+  const headingBottom = Math.max(
+    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0),
+    (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0),
+  );
+  const imageGap = (emptyImageBox?.y ?? 0) - headingBottom;
   expect(imageGap).toBeGreaterThanOrEqual(12);
   expect(imageGap).toBeLessThanOrEqual(30);
   expect(emptyTitleBox?.y ?? 0).toBeGreaterThanOrEqual(
