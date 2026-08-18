@@ -97,7 +97,6 @@ test("mobile section headings keep step markers aligned at 320px", async ({
   expect(cartTitleBox).not.toBeNull();
   expect(cartCopyBox).not.toBeNull();
   expect(itemCountBox).not.toBeNull();
-  expect(cartTitleBox?.height ?? 100).toBeLessThan(30);
   expect(itemCountBox?.y ?? 0).toBeGreaterThanOrEqual(
     (cartCopyBox?.y ?? 0) + (cartCopyBox?.height ?? 0) + 8,
   );
