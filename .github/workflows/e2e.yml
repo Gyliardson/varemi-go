@@ -36,14 +36,17 @@ jobs:
         run: |
           set -o pipefail
           npm run e2e | tee /tmp/varemi-e2e.log
-      - name: Decode mobile visual review screenshot
+      - name: Decode mobile visual review screenshots
         run: |
-          sed -n 's/^.*VAREMI_SCREENSHOT_BASE64://p' /tmp/varemi-e2e.log | tail -n 1 | base64 --decode > /tmp/empty-cart-320.png
-          test -s /tmp/empty-cart-320.png
-      - name: Upload mobile visual review screenshot
+          mkdir -p /tmp/visual-review
+          for state in EMPTY_320 EMPTY_390 POPULATED_390; do
+            grep "VAREMI_VISUAL_${state}:" /tmp/varemi-e2e.log | tail -n 1 | cut -d: -f2- | base64 --decode > "/tmp/visual-review/${state}.png"
+            test -s "/tmp/visual-review/${state}.png"
+          done
+      - name: Upload mobile visual review screenshots
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: visual-review-empty-cart-320
-          path: /tmp/empty-cart-320.png
+          name: visual-review-mobile-states
+          path: /tmp/visual-review/*.png
           if-no-files-found: error
           retention-days: 1
