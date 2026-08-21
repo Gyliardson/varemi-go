@@ -17,5 +17,8 @@ test("captures item-count placement for visual review", async ({ page }) => {
   await page.getByLabel("Código de barras").fill("7890000000017");
   await page.getByRole("button", { name: "Adicionar" }).click();
   await expect(page.locator("#item-count-value")).toHaveText("1 item");
-  emitScreenshot("COUNT_POPULATED_390", await page.screenshot({ fullPage: true }));
+  emitScreenshot(
+    "COUNT_POPULATED_390",
+    await page.screenshot({ fullPage: true }),
+  );
 });
