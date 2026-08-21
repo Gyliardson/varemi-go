@@ -290,6 +290,7 @@ h2 {
 .section-heading-copy {
   min-width: 0;
   gap: 12px;
+  align-items: flex-start;
 }
 
 .section-description {
@@ -712,14 +713,11 @@ input:disabled {
   white-space: nowrap;
 }
 
-.item-count svg {
+.item-count .cart-icon {
+  flex: 0 0 auto;
   width: 18px;
   height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.9;
+  object-fit: contain;
 }
 
 .empty-cart {
@@ -734,34 +732,11 @@ input:disabled {
   margin-bottom: 8px;
 }
 
-.empty-illustration svg {
+.empty-illustration img {
+  display: block;
   width: 100%;
   height: auto;
-}
-
-.empty-illustration ellipse {
-  fill: #dfeaf9;
-}
-
-.empty-illustration circle:first-of-type {
-  fill: #edf4ff;
-}
-
-.empty-illustration path {
-  fill: none;
-  stroke: #2f7fe9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 7;
-}
-
-.empty-illustration circle:not(:first-of-type) {
-  fill: #2f7fe9;
-}
-
-.empty-illustration path:last-of-type {
-  stroke: #62bde1;
-  stroke-width: 3;
+  object-fit: contain;
 }
 
 .empty-cart p {
@@ -1101,6 +1076,17 @@ input:disabled {
   }
 }
 
+@media (max-width: 430px) {
+  .cart-section .section-heading {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .cart-section .item-count {
+    margin-left: 52px;
+  }
+}
+
 @media (max-width: 390px) {
   .shell {
     padding-inline: 12px;
@@ -1134,6 +1120,10 @@ input:disabled {
 
   .section-heading-copy {
     gap: 9px;
+  }
+
+  .cart-section .item-count {
+    margin-left: 45px;
   }
 
   .item-actions {

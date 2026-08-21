@@ -39,6 +39,16 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
     "online",
   );
   await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+
+  const emptyCart = page.locator("#empty-cart");
+  const emptyCartImage = emptyCart.locator('img[src="/assets/cart-empty.png"]');
+  const cartIcon = page.locator('#item-count img[src="/assets/cart-icon.png"]');
+  await expect(emptyCartImage).toBeVisible();
+  await expect(emptyCartImage).toHaveAttribute("alt", "");
+  await expect(cartIcon).toBeVisible();
+  await expect(cartIcon).toHaveAttribute("alt", "");
+  await expect(page.locator("#item-count-value")).toHaveText("0 itens");
+
   await expect(
     page.getByText(
       "Este total é um acompanhamento. No MVP atual, os produtos ainda são registrados normalmente no caixa.",
@@ -57,6 +67,134 @@ test("mobile shopper sees clear status, empty state, and add feedback", async ({
   await expect(page.locator('[data-barcode="7890000000017"]')).toHaveClass(
     /cart-item--fresh/,
   );
+  await expect(emptyCart).toBeHidden();
+  await expect(page.locator("#item-count-value")).toHaveText("1 item");
+});
+
+test("mobile cart count integrates with the heading at 390px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/#/store/demo-market");
+
+  const titleBox = await page.locator("#cart-title").boundingBox();
+  const descriptionBox = await page
+    .locator(".cart-section .section-description")
+    .boundingBox();
+  const itemCountBox = await page.locator("#item-count").boundingBox();
+
+  expect(titleBox).not.toBeNull();
+  expect(descriptionBox).not.toBeNull();
+  expect(itemCountBox).not.toBeNull();
+  expect(
+    Math.abs((itemCountBox?.y ?? 0) - (titleBox?.y ?? 0)),
+  ).toBeLessThanOrEqual(4);
+  expect(itemCountBox?.x ?? 0).toBeGreaterThanOrEqual(
+    (titleBox?.x ?? 0) + (titleBox?.width ?? 0) + 8,
+  );
+  expect(descriptionBox?.y ?? 0).toBeGreaterThanOrEqual(
+    Math.max(
+      (titleBox?.y ?? 0) + (titleBox?.height ?? 0),
+      (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0),
+    ),
+  );
+  expect(
+    Math.abs(
+      (itemCountBox?.x ?? 0) +
+        (itemCountBox?.width ?? 0) -
+        ((descriptionBox?.x ?? 0) + (descriptionBox?.width ?? 0)),
+    ),
+  ).toBeLessThanOrEqual(1);
+});
+
+test("mobile card hierarchy stays aligned and compact at 320px", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/#/store/demo-market");
+
+  for (const cardSelector of [".scan-card", ".cart-section"]) {
+    const stepBox = await page.locator(`${cardSelector} .step`).boundingBox();
+    const titleBox = await page.locator(`${cardSelector} h2`).boundingBox();
+    const descriptionBox = await page
+      .locator(`${cardSelector} .section-description`)
+      .boundingBox();
+    expect(stepBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    expect(descriptionBox).not.toBeNull();
+    expect(
+      Math.abs((stepBox?.y ?? 0) - (titleBox?.y ?? 0)),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs((descriptionBox?.x ?? 0) - (titleBox?.x ?? 0)),
+    ).toBeLessThanOrEqual(1);
+  }
+
+  const cartHeadingBox = await page.locator(".cart-heading-text").boundingBox();
+  const cartTitleBox = await page.locator("#cart-title").boundingBox();
+  const cartDescriptionBox = await page
+    .locator(".cart-section .section-description")
+    .boundingBox();
+  const itemCountBox = await page.locator("#item-count").boundingBox();
+  expect(cartHeadingBox).not.toBeNull();
+  expect(cartTitleBox).not.toBeNull();
+  expect(cartDescriptionBox).not.toBeNull();
+  expect(itemCountBox).not.toBeNull();
+  expect(itemCountBox?.x ?? 0).toBeGreaterThanOrEqual(
+    (cartDescriptionBox?.x ?? 0) + (cartDescriptionBox?.width ?? 0) + 8,
+  );
+  expect(itemCountBox?.y ?? 0).toBeGreaterThanOrEqual(
+    cartDescriptionBox?.y ?? 0,
+  );
+  expect(
+    (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0),
+  ).toBeLessThanOrEqual(
+    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0) + 1,
+  );
+  expect(
+    Math.abs(
+      (itemCountBox?.x ?? 0) +
+        (itemCountBox?.width ?? 0) -
+        ((cartHeadingBox?.x ?? 0) + (cartHeadingBox?.width ?? 0)),
+    ),
+  ).toBeLessThanOrEqual(1);
+
+  const emptyImageBox = await page
+    .locator('#empty-cart img[src="/assets/cart-empty.png"]')
+    .boundingBox();
+  const emptyTitleBox = await page
+    .getByText("Seu carrinho está vazio.")
+    .boundingBox();
+  const emptyCopyBox = await page
+    .getByText("Adicione um produto para começar a acompanhar o total.")
+    .boundingBox();
+  expect(emptyImageBox).not.toBeNull();
+  expect(emptyTitleBox).not.toBeNull();
+  expect(emptyCopyBox).not.toBeNull();
+
+  const headingBottom = Math.max(
+    (cartDescriptionBox?.y ?? 0) + (cartDescriptionBox?.height ?? 0),
+    (itemCountBox?.y ?? 0) + (itemCountBox?.height ?? 0),
+  );
+  const imageGap = (emptyImageBox?.y ?? 0) - headingBottom;
+  expect(imageGap).toBeGreaterThanOrEqual(12);
+  expect(imageGap).toBeLessThanOrEqual(30);
+  expect(emptyTitleBox?.y ?? 0).toBeGreaterThanOrEqual(
+    (emptyImageBox?.y ?? 0) + (emptyImageBox?.height ?? 0) + 8,
+  );
+  const copyGap =
+    (emptyCopyBox?.y ?? 0) -
+    ((emptyTitleBox?.y ?? 0) + (emptyTitleBox?.height ?? 0));
+  expect(copyGap).toBeGreaterThanOrEqual(4);
+  expect(copyGap).toBeLessThanOrEqual(12);
+
+  const centerX = (box) => (box?.x ?? 0) + (box?.width ?? 0) / 2;
+  expect(
+    Math.abs(centerX(emptyImageBox) - centerX(emptyTitleBox)),
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(centerX(emptyTitleBox) - centerX(emptyCopyBox)),
+  ).toBeLessThanOrEqual(2);
 });
 
 test("polish keeps the verified accessible text colors", async ({ page }) => {

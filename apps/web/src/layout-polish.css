@@ -1,0 +1,171 @@
+/* Focused layout refinements for the shopper flow. */
+.section-heading-copy {
+  flex: 1;
+}
+
+.section-heading-text {
+  min-width: 0;
+}
+
+.cart-heading-text {
+  display: grid;
+  width: 100%;
+  grid-template-areas:
+    "title count"
+    "description count";
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 14px;
+  align-items: center;
+}
+
+.cart-heading-text #cart-title {
+  grid-area: title;
+}
+
+.cart-heading-text .section-description {
+  grid-area: description;
+}
+
+.cart-heading-text .item-count {
+  grid-area: count;
+  justify-self: end;
+}
+
+.empty-cart {
+  padding: 24px 10px 22px;
+}
+
+.empty-illustration {
+  width: min(154px, 50vw);
+  margin-bottom: 10px;
+}
+
+.empty-cart p {
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+
+.empty-cart > span {
+  max-width: 19rem;
+  text-wrap: balance;
+}
+
+@media (max-width: 520px) {
+  .section-heading {
+    gap: 10px;
+  }
+
+  .section-heading-copy {
+    gap: 10px;
+  }
+
+  .cart-heading-text .section-heading-copy {
+    display: contents;
+  }
+
+  .section-description {
+    max-width: none;
+  }
+
+  .cart-section .section-heading {
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .cart-heading-text {
+    grid-template-areas:
+      "title count"
+      "description description";
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 10px;
+    row-gap: 3px;
+    align-items: start;
+  }
+
+  .cart-section .item-count {
+    justify-self: end;
+    align-self: start;
+    min-height: 32px;
+    margin: -3px 0 0;
+    padding: 6px 9px;
+    font-size: 0.76rem;
+  }
+
+  .cart-section .item-count .cart-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .empty-cart {
+    padding: 18px 8px 18px;
+  }
+
+  .empty-illustration {
+    width: min(150px, 48vw);
+    margin-bottom: 10px;
+  }
+
+  .empty-cart > span {
+    max-width: 230px;
+  }
+
+  .cart-summary {
+    margin-top: 14px;
+    padding-top: 16px;
+  }
+}
+
+@media (max-width: 350px) {
+  .cart-heading-text {
+    grid-template-areas:
+      "title title"
+      "description count";
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 4px;
+  }
+
+  .cart-section .item-count {
+    align-self: center;
+    margin: 0;
+  }
+}
+
+@media (max-width: 390px) {
+  .scan-card .section-heading {
+    gap: 8px;
+  }
+
+  .scan-card .section-heading-copy {
+    gap: 8px;
+  }
+
+  #scan-title {
+    font-size: 1.12rem;
+  }
+
+  .scan-card .camera-button {
+    min-width: 46px;
+    padding-inline: 11px;
+  }
+
+  .total-card {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: center;
+  }
+
+  .total-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+
+  .total-card strong {
+    grid-column: 2;
+    width: auto;
+    margin: 0;
+    justify-self: end;
+  }
+}

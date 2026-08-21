@@ -32,4 +32,23 @@ jobs:
       - run: python -m pip check
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run e2e
+      - name: Run E2E and capture visual review output
+        run: |
+          set -o pipefail
+          npm run e2e | tee /tmp/varemi-e2e.log
+      - name: Decode mobile visual review screenshots
+        run: |
+          mkdir -p /tmp/visual
+          sed -n 's/^.*VAREMI_VISUAL_COUNT_EMPTY_390://p' /tmp/varemi-e2e.log | tail -n 1 | base64 --decode > /tmp/visual/count-empty-390.png
+          sed -n 's/^.*VAREMI_VISUAL_COUNT_EMPTY_320://p' /tmp/varemi-e2e.log | tail -n 1 | base64 --decode > /tmp/visual/count-empty-320.png
+          sed -n 's/^.*VAREMI_VISUAL_COUNT_POPULATED_390://p' /tmp/varemi-e2e.log | tail -n 1 | base64 --decode > /tmp/visual/count-populated-390.png
+          test -s /tmp/visual/count-empty-390.png
+          test -s /tmp/visual/count-empty-320.png
+          test -s /tmp/visual/count-populated-390.png
+      - name: Upload mobile visual review screenshots
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-review-count-placement
+          path: /tmp/visual/*.png
+          if-no-files-found: error
+          retention-days: 1
